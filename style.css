@@ -939,6 +939,148 @@ table {
 
 }
 
+.rec-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 150px);
+    justify-content: center;
+    gap: 20px;
+}
+
+.rec-card {
+    display: block;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid rgba(193, 255, 0, 0.3);
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.rec-card img {
+    display: block;
+    width: 150px;
+    height: 150px;
+    object-fit: cover;
+    transition: all 0.3s ease;
+}
+
+.rec-card:hover {
+    border-color: #c1ff00;
+    box-shadow: 0 0 15px rgba(193, 255, 0, 0.6);
+    transform: translateY(-5px);
+}
+
+.rec-card:hover img {
+    transform: scale(1.05);
+}
+
+.rec-card:active {
+    transform: translateY(0px) scale(0.97);
+    box-shadow: 0 0 8px rgba(193, 255, 0, 0.3);
+    border-color: #ff003c;
+    transition: all 0.1s ease;
+}
+
+.rec-card.touch-active {
+    border-color: #c1ff00;
+    box-shadow: 0 0 15px rgba(193, 255, 0, 0.6);
+    transform: translateY(-5px);
+}
+
+.rec-card.touch-active img {
+    transform: scale(1.05);
+}
+
+/* ── touch-active: 모든 호버 요소 모바일 터치 대응 ── */
+
+.nav a.touch-active {
+    text-shadow: 0px 13px 2px #0062ff, 0px -13px 2px #ff003c;
+}
+
+.logo.touch-active {
+    color: #c1ff00;
+    text-shadow: 0px 0px 5px #c1ff00;
+}
+
+.box.touch-active {
+    animation: rotate-gradient 3s linear infinite, rotate-shadow 3s linear infinite;
+}
+
+.contact-box.touch-active {
+    animation: rotate-contact-shadow 3s linear infinite;
+}
+
+.about-box.touch-active {
+    animation: rotate-gradient 3s linear infinite, rotate-shadow 3s linear infinite;
+}
+
+.about-box.touch-active .profile {
+    left: calc(100% - 170px);
+}
+
+.about-box.touch-active .first-info {
+    opacity: 0;
+}
+
+.about-box.touch-active .second-info {
+    opacity: 1;
+}
+
+.info-box.touch-active {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 30px rgba(193, 255, 0, 0.15);
+    border-color: rgba(193, 255, 0, 0.8);
+}
+
+.port-date.touch-active {
+    border-color: #e0f7fa;
+    box-shadow: 0 0 20px rgba(224, 247, 250, 0.4), inset 0 0 15px rgba(224, 247, 250, 0.3);
+    transform: scale(1.05);
+}
+
+.port-inner.touch-active {
+    background: linear-gradient(90deg, rgba(193, 255, 0, 0.2) 0%, transparent 100%);
+    transform: translateX(10px);
+    border-left: 4px solid #c1ff00;
+}
+
+.skill-card.touch-active {
+    border-color: #c1ff00;
+    box-shadow: 0 0 15px #c1ff00;
+    transform: translateY(-5px);
+}
+
+.contact-card.touch-active {
+    background: rgba(193, 255, 0, 0.08);
+    border-color: #c1ff00;
+    box-shadow: 0 0 15px rgba(193, 255, 0, 0.6), inset 0 0 10px rgba(193, 255, 0, 0.2);
+    transform: translateY(-5px);
+}
+
+.boj-api.touch-active {
+    box-shadow: 1px 0px #ff003c, 0px 1px #ff003c, -1px 0px #ff003c, 0px -1px #ff003c;
+    transform: translateY(-10px);
+}
+
+.sub-pro.touch-active {
+    transform: translateY(-20px);
+    border: 1px solid #c1ff00;
+}
+
+.sub-pro.touch-active .hh1 {
+    color: #c1ff00;
+    transform: scale(1.05) translateY(-5px);
+}
+
+.sub-pro.touch-active .sub-inner {
+    transform: translateY(10px) scale(1.05);
+    margin-bottom: 30px;
+}
+
+.btntext.touch-active {
+    color: #c1ff00;
+    text-shadow: 0px 0px 5px #c1ff00;
+}
+
 @media (max-width: 768px) {
     .about-box {
         height: 100px;
@@ -1019,5 +1161,15 @@ table {
 
     .sub-inner{
         font-size: 15px;
+    }
+
+    .rec-grid {
+        grid-template-columns: repeat(2, 120px);
+        gap: 12px;
+    }
+
+    .rec-card img {
+        width: 120px;
+        height: 120px;
     }
 }
