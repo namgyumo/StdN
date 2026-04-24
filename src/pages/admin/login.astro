@@ -1,0 +1,73 @@
+---
+import AdminLayout from '@layouts/AdminLayout.astro';
+---
+
+<AdminLayout title="login" requireAuth={false}>
+  <div class="login-wrap">
+    <h1>// admin login</h1>
+    <form id="login-form">
+      <input
+        type="password"
+        name="password"
+        placeholder="password"
+        autocomplete="current-password"
+        required
+        autofocus
+      />
+      <p class="login-error" id="login-error" aria-live="polite"></p>
+      <button type="submit" id="login-btn">enter</button>
+    </form>
+  </div>
+
+  <script is:inline>
+    (async () => {
+      // 이미 로그인돼있으면 대시보드로
+      try {
+        const r = await fetch('/api/admin/me', { credentials: 'same-origin' });
+        const d = await r.json();
+        if (d.authed) {
+          const next = new URLSearchParams(location.search).get('next');
+          location.replace(next || '/admin');
+        }
+      } catch {}
+    })();
+
+    const form = document.getElementById('login-form');
+    const errorEl = document.getElementById('login-error');
+    const btn = document.getElementById('login-btn');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      errorEl.textContent = '';
+      btn.disabled = true;
+      btn.textContent = '...';
+
+      const password = form.elements.password.value;
+      try {
+        const r = await fetch('/api/admin/login', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          credentials: 'same-origin',
+          body: JSON.stringify({ password }),
+        });
+        const d = await r.json();
+        if (!d.ok) {
+          errorEl.textContent = d.error === 'invalid_credentials'
+            ? '비밀번호가 틀립니다.'
+            : d.error === 'admin_not_configured'
+              ? '서버에 ADMIN_PASSWORD_HASH 가 설정되지 않았습니다.'
+              : `로그인 실패: ${d.error}`;
+          btn.disabled = false;
+          btn.textContent = 'enter';
+          return;
+        }
+        const next = new URLSearchParams(location.search).get('next');
+        location.replace(next || '/admin');
+      } catch (err) {
+        errorEl.textContent = '네트워크 오류';
+        btn.disabled = false;
+        btn.textContent = 'enter';
+      }
+    });
+  </script>
+</AdminLayout>

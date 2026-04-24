@@ -24,6 +24,7 @@ interface Props {
 }
 
 const { tag, posts } = Astro.props;
+const staticSlugs = posts.map((p) => p.id);
 ---
 
 <BaseLayout
@@ -35,15 +36,15 @@ const { tag, posts } = Astro.props;
       <p class="eyebrow">// tag</p>
       <h1 class="h1">#{tag}</h1>
       <p style="margin-top: 10px; color: var(--color-fg-dim); font-family: var(--font-mono);">
-        {posts.length}개의 글
+        <span id="tag-count">{posts.length}</span>개의 글
       </p>
       <p style="margin-top: 20px;">
         <a href="/blog" class="btntext">← 전체 블로그로</a>
       </p>
     </header>
-    <ul class="post-list">
+    <ul class="post-list" id="post-list">
       {posts.map((p) => (
-        <li>
+        <li data-slug={p.id} data-published={p.data.publishedAt.toISOString()}>
           <a class="post-item" href={`/blog/${p.id}`}>
             <span class="post-date">{formatShortDate(p.data.publishedAt)}</span>
             <div>
@@ -60,3 +61,51 @@ const { tag, posts } = Astro.props;
     </ul>
   </section>
 </BaseLayout>
+
+<script is:inline define:vars={{ tag, staticSlugs }}>
+  (async () => {
+    try {
+      const r = await fetch('/api/posts', { credentials: 'same-origin' });
+      if (!r.ok) return;
+      const data = await r.json();
+      if (!data?.ok || !Array.isArray(data.posts)) return;
+
+      const staticSet = new Set(staticSlugs);
+      const matches = data.posts.filter(
+        (p) => !staticSet.has(p.slug) && Array.isArray(p.tags) && p.tags.includes(tag),
+      );
+      if (matches.length === 0) return;
+
+      const list = document.getElementById('post-list');
+      const countEl = document.getElementById('tag-count');
+      if (!list) return;
+
+      const fmt = (iso) => {
+        const d = new Date(iso);
+        return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`;
+      };
+      const esc = (s) => s.replace(/[&<>"']/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+
+      for (const p of matches) {
+        const li = document.createElement('li');
+        li.dataset.slug = p.slug;
+        li.dataset.published = p.publishedAt;
+        li.innerHTML = `
+          <a class="post-item" href="/blog/${encodeURIComponent(p.slug)}">
+            <span class="post-date">${fmt(p.publishedAt)}</span>
+            <div>
+              <h2 class="post-title">${esc(p.title)}</h2>
+              ${(p.tags && p.tags.length) ? `<div class="post-tags">${p.tags.map((t) => `<span class="tag">#${esc(t)}</span>`).join('')}</div>` : ''}
+            </div>
+          </a>
+        `;
+        list.appendChild(li);
+      }
+
+      const items = [...list.querySelectorAll('li')];
+      items.sort((a, b) => (b.dataset.published ?? '').localeCompare(a.dataset.published ?? ''));
+      for (const el of items) list.appendChild(el);
+      if (countEl) countEl.textContent = String(items.length);
+    } catch {}
+  })();
+</script>

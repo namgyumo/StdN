@@ -13,6 +13,8 @@ for (const p of all) {
   for (const t of p.data.tags) tagCount.set(t, (tagCount.get(t) ?? 0) + 1);
 }
 const tags = [...tagCount.entries()].sort((a, b) => b[1] - a[1]);
+
+const staticSlugs = all.map((p) => p.id);
 ---
 
 <BaseLayout
@@ -23,43 +25,115 @@ const tags = [...tagCount.entries()].sort((a, b) => b[1] - a[1]);
     <header class="blog-head">
       <h1 class="h1">Blog</h1>
       <p class="eyebrow">// archive</p>
-      <p>총 <strong>{all.length}</strong>개의 글</p>
+      <p>총 <strong id="post-count">{all.length}</strong>개의 글</p>
     </header>
 
-    {tags.length > 0 && (
-      <div class="tag-cloud">
-        {tags.map(([t, c]) => (
-          <a href={`/blog/tags/${encodeURIComponent(t)}`} class="tag">
-            #{t} <span style="opacity:.6">{c}</span>
-          </a>
-        ))}
-      </div>
-    )}
+    <div class="tag-cloud" id="tag-cloud">
+      {tags.map(([t, c]) => (
+        <a href={`/blog/tags/${encodeURIComponent(t)}`} class="tag" data-tag={t} data-count={c}>
+          #{t} <span style="opacity:.6">{c}</span>
+        </a>
+      ))}
+    </div>
 
-    {all.length === 0 ? (
-      <p class="empty">아직 공개된 글이 없습니다.</p>
-    ) : (
-      <ul class="post-list">
-        {all.map((p) => (
-          <li>
-            <a class="post-item" href={`/blog/${p.id}`}>
-              <span class="post-date">{formatShortDate(p.data.publishedAt)}</span>
-              <div>
-                <h2 class="post-title">{p.data.title}</h2>
-                {p.data.description && <p class="post-excerpt">{p.data.description}</p>}
-                {p.data.tags.length > 0 && (
-                  <div class="post-tags">
-                    {p.data.tags.map((t) => <span class="tag">#{t}</span>)}
-                  </div>
-                )}
-              </div>
-            </a>
-          </li>
-        ))}
-      </ul>
-    )}
+    <ul class="post-list" id="post-list">
+      {all.map((p) => (
+        <li data-slug={p.id} data-published={p.data.publishedAt.toISOString()}>
+          <a class="post-item" href={`/blog/${p.id}`}>
+            <span class="post-date">{formatShortDate(p.data.publishedAt)}</span>
+            <div>
+              <h2 class="post-title">{p.data.title}</h2>
+              {p.data.description && <p class="post-excerpt">{p.data.description}</p>}
+              {p.data.tags.length > 0 && (
+                <div class="post-tags">
+                  {p.data.tags.map((t) => <span class="tag">#{t}</span>)}
+                </div>
+              )}
+            </div>
+          </a>
+        </li>
+      ))}
+    </ul>
+
+    <p class="empty" id="empty-state" style={all.length === 0 ? '' : 'display:none'}>
+      아직 공개된 글이 없습니다.
+    </p>
   </section>
 </BaseLayout>
+
+<script is:inline define:vars={{ staticSlugs }}>
+  (async () => {
+    try {
+      const r = await fetch('/api/posts', { credentials: 'same-origin' });
+      if (!r.ok) return;
+      const data = await r.json();
+      if (!data?.ok || !Array.isArray(data.posts)) return;
+
+      const staticSet = new Set(staticSlugs);
+      const d1Posts = data.posts.filter((p) => !staticSet.has(p.slug));
+      if (d1Posts.length === 0) return;
+
+      const list = document.getElementById('post-list');
+      const empty = document.getElementById('empty-state');
+      const countEl = document.getElementById('post-count');
+      const tagCloud = document.getElementById('tag-cloud');
+      if (!list) return;
+
+      const fmt = (iso) => {
+        const d = new Date(iso);
+        return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`;
+      };
+      const esc = (s) => s.replace(/[&<>"']/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+
+      for (const p of d1Posts) {
+        const li = document.createElement('li');
+        li.dataset.slug = p.slug;
+        li.dataset.published = p.publishedAt;
+        li.innerHTML = `
+          <a class="post-item" href="/blog/${encodeURIComponent(p.slug)}">
+            <span class="post-date">${fmt(p.publishedAt)}</span>
+            <div>
+              <h2 class="post-title">${esc(p.title)}</h2>
+              ${p.description ? `<p class="post-excerpt">${esc(p.description)}</p>` : ''}
+              ${(p.tags && p.tags.length) ? `<div class="post-tags">${p.tags.map((t) => `<span class="tag">#${esc(t)}</span>`).join('')}</div>` : ''}
+            </div>
+          </a>
+        `;
+        list.appendChild(li);
+      }
+
+      // 날짜 내림차순 재정렬
+      const items = [...list.querySelectorAll('li')];
+      items.sort((a, b) => {
+        const ad = a.dataset.published ?? '';
+        const bd = b.dataset.published ?? '';
+        return bd.localeCompare(ad);
+      });
+      for (const el of items) list.appendChild(el);
+
+      // 카운트 갱신
+      if (countEl) countEl.textContent = String(items.length);
+      if (empty && items.length > 0) empty.style.display = 'none';
+
+      // 태그 클라우드 재집계
+      if (tagCloud) {
+        const counts = new Map();
+        tagCloud.querySelectorAll('a.tag').forEach((a) => {
+          const t = a.dataset.tag;
+          const c = Number(a.dataset.count ?? '0');
+          if (t) counts.set(t, c);
+        });
+        for (const p of d1Posts) {
+          for (const t of (p.tags ?? [])) counts.set(t, (counts.get(t) ?? 0) + 1);
+        }
+        const sorted = [...counts.entries()].sort((a, b) => b[1] - a[1]);
+        tagCloud.innerHTML = sorted.map(([t, c]) =>
+          `<a href="/blog/tags/${encodeURIComponent(t)}" class="tag" data-tag="${esc(t)}" data-count="${c}">#${esc(t)} <span style="opacity:.6">${c}</span></a>`
+        ).join('');
+      }
+    } catch {}
+  })();
+</script>
 
 <style>
   .blog-index { padding-top: 60px; }
@@ -73,6 +147,7 @@ const tags = [...tagCount.entries()].sort((a, b) => b[1] - a[1]);
     justify-content: center;
     margin: 20px 0 10px;
   }
+  .tag-cloud:empty { display: none; }
   .post-excerpt {
     margin: 6px 0 0;
     color: var(--color-fg-dim);

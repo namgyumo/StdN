@@ -1,0 +1,62 @@
+---
+import '@styles/admin.css';
+import { site } from '@lib/site';
+
+interface Props {
+  title: string;
+  requireAuth?: boolean;
+}
+
+const { title, requireAuth = true } = Astro.props;
+const fullTitle = `${title} · admin · ${site.title}`;
+---
+
+<!doctype html>
+<html lang={site.locale}>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="theme-color" content="#080808" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>{fullTitle}</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="stylesheet" href="/global.css" />
+  </head>
+  <body class="admin-body">
+    <header class="admin-header">
+      <a href="/admin" class="admin-logo">std::N <span>· admin</span></a>
+      <nav class="admin-nav">
+        <a href="/admin">posts</a>
+        <a href="/admin/editor">new</a>
+        <a href="/" target="_blank" rel="noopener">site ↗</a>
+        <button type="button" id="admin-logout">logout</button>
+      </nav>
+    </header>
+    <main class="admin-main">
+      <slot />
+    </main>
+
+    <script is:inline define:vars={{ requireAuth }}>
+      // 세션 체크 (로그인 페이지가 아니면)
+      (async () => {
+        if (!requireAuth) return;
+        try {
+          const r = await fetch('/api/admin/me', { credentials: 'same-origin' });
+          const d = await r.json();
+          if (!d.authed) {
+            const next = encodeURIComponent(location.pathname + location.search);
+            location.replace(`/admin/login?next=${next}`);
+          }
+        } catch {
+          location.replace('/admin/login');
+        }
+      })();
+
+      document.getElementById('admin-logout')?.addEventListener('click', async () => {
+        await fetch('/api/admin/logout', { method: 'POST', credentials: 'same-origin' });
+        location.href = '/admin/login';
+      });
+    </script>
+  </body>
+</html>

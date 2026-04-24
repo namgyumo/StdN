@@ -1,0 +1,85 @@
+---
+import AdminLayout from '@layouts/AdminLayout.astro';
+---
+
+<AdminLayout title="dashboard">
+  <div class="dash-head">
+    <h1>posts</h1>
+    <a class="btn-primary" href="/admin/editor">+ new post</a>
+  </div>
+
+  <table class="post-table">
+    <thead>
+      <tr>
+        <th>title</th>
+        <th>slug</th>
+        <th>status</th>
+        <th>updated</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody id="rows">
+      <tr><td colspan="5" style="text-align:center;opacity:.5;padding:40px">loading…</td></tr>
+    </tbody>
+  </table>
+
+  <script is:inline>
+    const rows = document.getElementById('rows');
+
+    const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const fmtDate = (iso) => {
+      if (!iso) return '—';
+      const d = new Date(iso);
+      return `${d.getFullYear().toString().slice(2)}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')}`;
+    };
+
+    async function load() {
+      rows.innerHTML = '<tr><td colspan="5" style="text-align:center;opacity:.5;padding:40px">loading…</td></tr>';
+      try {
+        const r = await fetch('/api/admin/posts', { credentials: 'same-origin' });
+        const d = await r.json();
+        if (!d.ok) throw new Error(d.error);
+        if (d.posts.length === 0) {
+          rows.innerHTML = '<tr><td colspan="5" style="text-align:center;opacity:.5;padding:40px">아직 글이 없습니다.</td></tr>';
+          return;
+        }
+        rows.innerHTML = d.posts.map((p) => `
+          <tr data-id="${p.id}">
+            <td><a class="post-link" href="/admin/editor?id=${p.id}">${esc(p.title)}</a></td>
+            <td style="font-family:var(--font-mono);opacity:.7">${esc(p.slug)}</td>
+            <td>${p.draft ? '<span class="badge badge-draft">draft</span>' : '<span class="badge badge-pub">public</span>'}</td>
+            <td style="font-family:var(--font-mono);opacity:.6">${fmtDate(p.updated_at)}</td>
+            <td class="col-actions">
+              ${p.draft ? '' : `<a class="btn-ghost" href="/blog/${esc(p.slug)}" target="_blank" rel="noopener">view</a>`}
+              <button class="btn-ghost btn-danger" data-del="${p.id}" data-title="${esc(p.title)}">delete</button>
+            </td>
+          </tr>
+        `).join('');
+      } catch (e) {
+        rows.innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--color-pink);padding:40px">불러오기 실패: ${e.message || e}</td></tr>`;
+      }
+    }
+
+    rows.addEventListener('click', async (e) => {
+      const t = e.target;
+      if (!(t instanceof HTMLElement)) return;
+      if (t.dataset.del) {
+        const id = t.dataset.del;
+        const title = t.dataset.title || '';
+        if (!confirm(`"${title}" 삭제할까요? 되돌릴 수 없습니다.`)) return;
+        t.disabled = true;
+        try {
+          const r = await fetch(`/api/admin/posts/${id}`, { method: 'DELETE', credentials: 'same-origin' });
+          const d = await r.json();
+          if (!d.ok) throw new Error(d.error);
+          load();
+        } catch (err) {
+          alert(`삭제 실패: ${err.message || err}`);
+          t.disabled = false;
+        }
+      }
+    });
+
+    load();
+  </script>
+</AdminLayout>

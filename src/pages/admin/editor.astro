@@ -1,0 +1,443 @@
+---
+import AdminLayout from '@layouts/AdminLayout.astro';
+---
+
+<AdminLayout title="editor">
+  <div class="editor-wrap">
+    <div class="editor-meta">
+      <input type="text" name="title" id="m-title" placeholder="제목" />
+      <input type="text" name="slug" id="m-slug" placeholder="url-slug (자동생성)" />
+      <select id="m-draft">
+        <option value="1">draft</option>
+        <option value="0">publish</option>
+      </select>
+      <div style="display:flex; gap:6px;">
+        <button type="button" class="btn-primary" id="btn-save">save <span class="kbd-hint">⌘S</span></button>
+        <button type="button" class="btn-ghost btn-danger" id="btn-delete" hidden>delete</button>
+      </div>
+    </div>
+
+    <div class="editor-meta" style="grid-template-columns: 1fr 340px;">
+      <input type="text" name="description" id="m-desc" placeholder="한 줄 요약 (OG / 목록 미리보기)" />
+      <div class="tag-input-wrap" id="tag-wrap">
+        <input type="text" id="m-tag-input" placeholder="tags (Enter 로 추가)" />
+      </div>
+    </div>
+
+    <div class="editor-toolbar" id="toolbar">
+      <button type="button" data-md="bold" title="Bold (Ctrl+B)"><b>B</b></button>
+      <button type="button" data-md="italic" title="Italic (Ctrl+I)"><i>I</i></button>
+      <button type="button" data-md="h2" title="Heading 2">H2</button>
+      <button type="button" data-md="h3" title="Heading 3">H3</button>
+      <button type="button" data-md="link" title="Link">🔗</button>
+      <button type="button" data-md="code" title="Inline code">` `</button>
+      <button type="button" data-md="pre" title="Code block">{ }</button>
+      <button type="button" data-md="quote" title="Blockquote">❝</button>
+      <button type="button" data-md="list" title="List">•</button>
+      <span class="sep"></span>
+      <button type="button" class="ai-btn" data-ai="complete" title="AI 이어쓰기 (Ctrl+K)">AI 이어쓰기</button>
+      <button type="button" class="ai-btn" data-ai="rewrite" title="AI 다듬기 (Ctrl+Shift+R)">AI 다듬기</button>
+      <button type="button" class="ai-btn" data-ai="fix" title="AI 수정 (Ctrl+Shift+F)">AI 수정</button>
+      <span class="sep"></span>
+      <span class="editor-status" id="status" style="margin-left:auto;">—</span>
+    </div>
+
+    <div class="editor-panes">
+      <textarea class="editor-textarea" id="editor" spellcheck="false" placeholder="# 여기부터 마크다운으로…"></textarea>
+      <div class="editor-preview prose" id="preview"></div>
+    </div>
+  </div>
+
+  <div class="ai-suggestion" id="ai-box" role="dialog" aria-label="AI 제안">
+    <div class="ai-label" id="ai-label">AI</div>
+    <div class="ai-text" id="ai-text"></div>
+    <div class="ai-actions">
+      <button type="button" id="ai-cancel">취소 <span class="kbd-hint">Esc</span></button>
+      <button type="button" class="accept" id="ai-accept">적용 <span class="kbd-hint">Tab</span></button>
+    </div>
+  </div>
+</AdminLayout>
+
+<script>
+  import { marked } from 'marked';
+
+  marked.use({ gfm: true, breaks: false, async: false });
+
+  const $ = (id: string) => document.getElementById(id)!;
+  const titleEl = $('m-title') as HTMLInputElement;
+  const slugEl = $('m-slug') as HTMLInputElement;
+  const descEl = $('m-desc') as HTMLInputElement;
+  const draftEl = $('m-draft') as HTMLSelectElement;
+  const editorEl = $('editor') as HTMLTextAreaElement;
+  const previewEl = $('preview') as HTMLDivElement;
+  const statusEl = $('status');
+  const saveBtn = $('btn-save') as HTMLButtonElement;
+  const deleteBtn = $('btn-delete') as HTMLButtonElement;
+  const tagWrap = $('tag-wrap') as HTMLDivElement;
+  const tagInput = $('m-tag-input') as HTMLInputElement;
+  const aiBox = $('ai-box') as HTMLDivElement;
+  const aiLabel = $('ai-label');
+  const aiText = $('ai-text');
+  const aiAccept = $('ai-accept') as HTMLButtonElement;
+  const aiCancel = $('ai-cancel') as HTMLButtonElement;
+
+  const postId = new URLSearchParams(location.search).get('id');
+  let tags: string[] = [];
+  let dirty = false;
+  let saving = false;
+  let pendingSuggestion: null | { kind: string; text: string; insertAt?: number; replaceRange?: [number, number] } = null;
+
+  // ── 태그 chip UI ──────────────────────────────────
+  function renderTags() {
+    [...tagWrap.querySelectorAll('.tag-chip')].forEach((el) => el.remove());
+    const frag = document.createDocumentFragment();
+    tags.forEach((t, i) => {
+      const chip = document.createElement('span');
+      chip.className = 'tag-chip';
+      chip.innerHTML = `#${escapeHtml(t)} <button type="button" aria-label="remove" data-i="${i}">×</button>`;
+      frag.appendChild(chip);
+    });
+    tagWrap.insertBefore(frag, tagInput);
+  }
+  tagWrap.addEventListener('click', (e) => {
+    const t = e.target as HTMLElement;
+    if (t.tagName === 'BUTTON' && t.dataset.i) {
+      tags.splice(Number(t.dataset.i), 1);
+      renderTags();
+      markDirty();
+    }
+  });
+  tagInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ',') {
+      e.preventDefault();
+      const v = tagInput.value.trim().replace(/^#/, '');
+      if (v && !tags.includes(v)) {
+        tags.push(v);
+        renderTags();
+        markDirty();
+      }
+      tagInput.value = '';
+    } else if (e.key === 'Backspace' && !tagInput.value && tags.length) {
+      tags.pop();
+      renderTags();
+      markDirty();
+    }
+  });
+
+  function escapeHtml(s: string) {
+    return s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!));
+  }
+
+  // ── 프리뷰 렌더 (디바운스) ────────────────────────
+  let previewTimer: number | null = null;
+  function schedulePreview() {
+    if (previewTimer) clearTimeout(previewTimer);
+    previewTimer = window.setTimeout(() => {
+      previewEl.innerHTML = marked.parse(editorEl.value) as string;
+    }, 100);
+  }
+
+  function markDirty() {
+    dirty = true;
+    statusEl.textContent = 'unsaved';
+    statusEl.className = 'editor-status dirty';
+  }
+  function markSaved() {
+    dirty = false;
+    statusEl.textContent = 'saved';
+    statusEl.className = 'editor-status saved';
+  }
+
+  editorEl.addEventListener('input', () => { schedulePreview(); markDirty(); });
+  titleEl.addEventListener('input', markDirty);
+  slugEl.addEventListener('input', markDirty);
+  descEl.addEventListener('input', markDirty);
+  draftEl.addEventListener('change', markDirty);
+
+  // ── 로드 ───────────────────────────────────────────
+  async function loadPost() {
+    if (!postId) {
+      deleteBtn.hidden = true;
+      schedulePreview();
+      return;
+    }
+    deleteBtn.hidden = false;
+    statusEl.textContent = 'loading…';
+    try {
+      const r = await fetch(`/api/admin/posts/${postId}`, { credentials: 'same-origin' });
+      const d = await r.json();
+      if (!d.ok) throw new Error(d.error);
+      const p = d.post;
+      titleEl.value = p.title;
+      slugEl.value = p.slug;
+      descEl.value = p.description ?? '';
+      draftEl.value = p.draft ? '1' : '0';
+      tags = Array.isArray(p.tags) ? p.tags.slice() : [];
+      renderTags();
+      editorEl.value = p.body_md;
+      schedulePreview();
+      markSaved();
+    } catch (e: any) {
+      statusEl.textContent = `load failed: ${e.message || e}`;
+      statusEl.className = 'editor-status dirty';
+    }
+  }
+
+  // ── 저장 ───────────────────────────────────────────
+  async function save() {
+    if (saving) return;
+    if (!titleEl.value.trim()) {
+      alert('제목을 입력해주세요.');
+      titleEl.focus();
+      return;
+    }
+    saving = true;
+    saveBtn.disabled = true;
+    saveBtn.textContent = 'saving…';
+    const payload = {
+      title: titleEl.value.trim(),
+      slug: slugEl.value.trim() || undefined,
+      description: descEl.value.trim() || null,
+      body_md: editorEl.value,
+      tags,
+      draft: draftEl.value === '1',
+    };
+    try {
+      const url = postId ? `/api/admin/posts/${postId}` : '/api/admin/posts';
+      const method = postId ? 'PUT' : 'POST';
+      const r = await fetch(url, {
+        method,
+        credentials: 'same-origin',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const d = await r.json();
+      if (!d.ok) throw new Error(d.error);
+      if (!postId && d.id) {
+        // 새 글 저장 후 id 붙여서 URL 갱신 (뒤로가기 안전)
+        history.replaceState(null, '', `/admin/editor?id=${d.id}`);
+        location.reload();
+        return;
+      }
+      if (d.slug) slugEl.value = d.slug;
+      markSaved();
+    } catch (e: any) {
+      statusEl.textContent = `save failed: ${e.message || e}`;
+      statusEl.className = 'editor-status dirty';
+      if (String(e.message || e) === 'slug_taken') alert('이 slug 는 이미 사용중입니다.');
+    } finally {
+      saving = false;
+      saveBtn.disabled = false;
+      saveBtn.textContent = 'save';
+    }
+  }
+
+  saveBtn.addEventListener('click', save);
+
+  deleteBtn.addEventListener('click', async () => {
+    if (!postId) return;
+    if (!confirm(`"${titleEl.value}" 삭제할까요? 되돌릴 수 없습니다.`)) return;
+    try {
+      const r = await fetch(`/api/admin/posts/${postId}`, { method: 'DELETE', credentials: 'same-origin' });
+      const d = await r.json();
+      if (!d.ok) throw new Error(d.error);
+      location.href = '/admin';
+    } catch (e: any) {
+      alert(`삭제 실패: ${e.message || e}`);
+    }
+  });
+
+  // ── 툴바: 마크다운 삽입 ───────────────────────────
+  function wrapSelection(before: string, after: string = before, placeholder: string = '') {
+    const start = editorEl.selectionStart;
+    const end = editorEl.selectionEnd;
+    const sel = editorEl.value.slice(start, end) || placeholder;
+    const newText = editorEl.value.slice(0, start) + before + sel + after + editorEl.value.slice(end);
+    editorEl.value = newText;
+    const cursor = start + before.length + sel.length + after.length;
+    editorEl.focus();
+    editorEl.setSelectionRange(start + before.length, start + before.length + sel.length);
+    schedulePreview();
+    markDirty();
+  }
+  function insertLinePrefix(prefix: string) {
+    const start = editorEl.selectionStart;
+    const text = editorEl.value;
+    // 현재 줄 시작 찾기
+    const lineStart = text.lastIndexOf('\n', start - 1) + 1;
+    editorEl.value = text.slice(0, lineStart) + prefix + text.slice(lineStart);
+    editorEl.focus();
+    editorEl.setSelectionRange(start + prefix.length, start + prefix.length);
+    schedulePreview();
+    markDirty();
+  }
+
+  document.getElementById('toolbar')!.addEventListener('click', (e) => {
+    const btn = (e.target as HTMLElement).closest('button');
+    if (!btn) return;
+    const md = btn.dataset.md;
+    const ai = btn.dataset.ai;
+    if (md) {
+      switch (md) {
+        case 'bold': wrapSelection('**', '**', 'text'); break;
+        case 'italic': wrapSelection('*', '*', 'text'); break;
+        case 'code': wrapSelection('`', '`', 'code'); break;
+        case 'pre': wrapSelection('\n```\n', '\n```\n', 'code'); break;
+        case 'quote': insertLinePrefix('> '); break;
+        case 'list': insertLinePrefix('- '); break;
+        case 'h2': insertLinePrefix('## '); break;
+        case 'h3': insertLinePrefix('### '); break;
+        case 'link': {
+          const start = editorEl.selectionStart;
+          const end = editorEl.selectionEnd;
+          const sel = editorEl.value.slice(start, end) || 'text';
+          wrapSelection(`[${sel}](`, `)`, 'url');
+          break;
+        }
+      }
+    }
+    if (ai) {
+      if (ai === 'complete') aiComplete();
+      if (ai === 'rewrite') aiRewrite();
+      if (ai === 'fix') aiFix();
+    }
+  });
+
+  // ── AI 호출 ────────────────────────────────────────
+  async function aiRequest(endpoint: string, body: any) {
+    editorEl.classList.add('ai-loading');
+    try {
+      const r = await fetch(`/api/ai/${endpoint}`, {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      return await r.json();
+    } finally {
+      editorEl.classList.remove('ai-loading');
+    }
+  }
+
+  function showSuggestion(label: string, text: string, apply: () => void) {
+    aiLabel!.textContent = label;
+    aiText!.textContent = text;
+    aiBox.classList.add('open');
+    pendingSuggestion = { kind: label, text };
+    aiAccept.onclick = () => { apply(); closeSuggestion(); };
+    aiCancel.onclick = closeSuggestion;
+  }
+  function closeSuggestion() {
+    aiBox.classList.remove('open');
+    pendingSuggestion = null;
+  }
+
+  async function aiComplete() {
+    const pos = editorEl.selectionStart;
+    const before = editorEl.value.slice(0, pos);
+    const after = editorEl.value.slice(pos);
+    if (!before.trim() && !after.trim()) {
+      alert('에디터에 내용을 조금이라도 적은 뒤 사용하세요.');
+      return;
+    }
+    showSuggestion('AI 이어쓰기 — 불러오는 중…', '', () => {});
+    const d = await aiRequest('complete', { before, after });
+    if (!d.ok) { showSuggestion(`AI 이어쓰기 — 오류: ${d.error}`, '', () => {}); return; }
+    if (!d.text) { closeSuggestion(); return; }
+    showSuggestion('AI 이어쓰기 — Tab 으로 적용', d.text, () => {
+      const t = editorEl.value;
+      // 필요시 커서 앞에 공백 1개 보장
+      const needSpace = pos > 0 && !/\s$/.test(t.slice(0, pos)) && !/^\s/.test(d.text);
+      const insert = (needSpace ? ' ' : '') + d.text;
+      editorEl.value = t.slice(0, pos) + insert + t.slice(pos);
+      const newPos = pos + insert.length;
+      editorEl.focus();
+      editorEl.setSelectionRange(newPos, newPos);
+      schedulePreview();
+      markDirty();
+    });
+  }
+
+  async function aiRewrite() {
+    const start = editorEl.selectionStart;
+    const end = editorEl.selectionEnd;
+    if (start === end) { alert('다듬을 구절을 선택해주세요.'); return; }
+    const selection = editorEl.value.slice(start, end);
+    const context = editorEl.value.slice(Math.max(0, start - 600), start) +
+                    ' […] ' +
+                    editorEl.value.slice(end, Math.min(editorEl.value.length, end + 600));
+    showSuggestion('AI 다듬기 — 불러오는 중…', '', () => {});
+    const d = await aiRequest('rewrite', { selection, context });
+    if (!d.ok) { showSuggestion(`AI 다듬기 — 오류: ${d.error}`, '', () => {}); return; }
+    showSuggestion('AI 다듬기 — Tab 으로 교체', d.text, () => {
+      editorEl.value = editorEl.value.slice(0, start) + d.text + editorEl.value.slice(end);
+      editorEl.focus();
+      editorEl.setSelectionRange(start, start + d.text.length);
+      schedulePreview();
+      markDirty();
+    });
+  }
+
+  async function aiFix() {
+    const start = editorEl.selectionStart;
+    const end = editorEl.selectionEnd;
+    if (start === end) { alert('수정할 구절을 선택해주세요.'); return; }
+    const selection = editorEl.value.slice(start, end);
+    const context = editorEl.value.slice(Math.max(0, start - 600), start) +
+                    ' […] ' +
+                    editorEl.value.slice(end, Math.min(editorEl.value.length, end + 600));
+    showSuggestion('AI 수정 — 불러오는 중…', '', () => {});
+    const d = await aiRequest('fix', { selection, context });
+    if (!d.ok) { showSuggestion(`AI 수정 — 오류: ${d.error}`, '', () => {}); return; }
+    showSuggestion('AI 수정 — Tab 으로 교체', d.text, () => {
+      editorEl.value = editorEl.value.slice(0, start) + d.text + editorEl.value.slice(end);
+      editorEl.focus();
+      editorEl.setSelectionRange(start, start + d.text.length);
+      schedulePreview();
+      markDirty();
+    });
+  }
+
+  // ── 전역 키보드 ───────────────────────────────────
+  document.addEventListener('keydown', (e) => {
+    const meta = e.ctrlKey || e.metaKey;
+    const target = e.target as HTMLElement;
+    const inTextarea = target === editorEl;
+
+    // AI suggestion open: Tab 적용, Esc 취소
+    if (aiBox.classList.contains('open')) {
+      if (e.key === 'Tab') { e.preventDefault(); aiAccept.click(); return; }
+      if (e.key === 'Escape') { e.preventDefault(); closeSuggestion(); return; }
+    }
+
+    // 저장
+    if (meta && e.key.toLowerCase() === 's') { e.preventDefault(); save(); return; }
+    // Bold / Italic (에디터에 포커스돼있을 때만)
+    if (inTextarea && meta && !e.shiftKey && e.key.toLowerCase() === 'b') { e.preventDefault(); wrapSelection('**', '**', 'text'); return; }
+    if (inTextarea && meta && !e.shiftKey && e.key.toLowerCase() === 'i') { e.preventDefault(); wrapSelection('*', '*', 'text'); return; }
+    // AI
+    if (inTextarea && meta && !e.shiftKey && e.key.toLowerCase() === 'k') { e.preventDefault(); aiComplete(); return; }
+    if (inTextarea && meta && e.shiftKey && e.key.toLowerCase() === 'r') { e.preventDefault(); aiRewrite(); return; }
+    if (inTextarea && meta && e.shiftKey && e.key.toLowerCase() === 'f') { e.preventDefault(); aiFix(); return; }
+  });
+
+  // Tab in textarea = 2 spaces (기본 포커스 이동 대신)
+  editorEl.addEventListener('keydown', (e) => {
+    if (e.key === 'Tab' && !aiBox.classList.contains('open')) {
+      e.preventDefault();
+      const s = editorEl.selectionStart;
+      const v = editorEl.value;
+      editorEl.value = v.slice(0, s) + '  ' + v.slice(editorEl.selectionEnd);
+      editorEl.setSelectionRange(s + 2, s + 2);
+      schedulePreview();
+      markDirty();
+    }
+  });
+
+  // 페이지 떠날 때 경고
+  window.addEventListener('beforeunload', (e) => {
+    if (dirty) { e.preventDefault(); e.returnValue = ''; }
+  });
+
+  loadPost();
+</script>

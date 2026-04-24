@@ -1,7 +1,7 @@
 # std::N
 
 기본이 탄탄한 주니어 개발자의 개인 홈페이지 + 블로그.
-Astro 5 + Cloudflare Pages 로 배포합니다.
+Astro 5 (정적) + Cloudflare Pages + Pages Functions + D1 로 배포합니다.
 
 ---
 
@@ -16,12 +16,23 @@ stdN/
 │   ├── site.webmanifest
 │   ├── og-default.svg       # 기본 Open Graph 이미지
 │   ├── robots.txt
+│   ├── global.css           # 전역 스타일 (Astro + Pages Functions 공용)
 │   └── _headers             # Cloudflare Pages 캐시/보안 헤더
 ├── functions/
-│   └── api/
-│       ├── contact.ts       # 연락 폼 — Resend 연동
-│       ├── guestbook.ts     # 방명록 — D1 필요
-│       └── views/[slug].ts  # 포스트 조회수 — D1 필요
+│   ├── _lib/
+│   │   ├── auth.ts          # PBKDF2 + HMAC 세션 쿠키 (Web Crypto 기반)
+│   │   ├── md.ts            # markdown → HTML (marked + 기본 sanitize)
+│   │   └── ai.ts            # Gemini 호출 래퍼 + 프롬프트 빌더
+│   ├── api/
+│   │   ├── contact.ts       # 연락 폼 — Resend 연동
+│   │   ├── guestbook.ts     # 방명록 — D1
+│   │   ├── views/[slug].ts  # 포스트 조회수 — D1
+│   │   ├── posts/index.ts   # 공개 포스트 목록 (블로그 리스트 하이드레이션)
+│   │   ├── admin/           # 로그인·세션·포스트 CRUD (인증 필수)
+│   │   └── ai/              # complete / rewrite / fix (Gemini 프록시)
+│   └── blog/
+│       ├── [slug].ts        # D1 포스트 렌더, 없으면 정적 MD 로 fall-through
+│       └── tags/[tag].ts    # D1-only 태그 페이지 fallback
 ├── src/
 │   ├── components/          # Header, CommandPalette, TOC 등
 │   ├── content/
@@ -30,7 +41,8 @@ stdN/
 │   │   └── config.ts        # Content Collection 스키마
 │   ├── layouts/
 │   │   ├── BaseLayout.astro
-│   │   └── BlogLayout.astro
+│   │   ├── BlogLayout.astro
+│   │   └── AdminLayout.astro
 │   ├── lib/
 │   │   ├── site.ts          # 사이트 메타데이터 (이름/핸들/nav 등)
 │   │   └── format.ts
@@ -39,12 +51,16 @@ stdN/
 │   │   ├── about.astro       /about
 │   │   ├── skills.astro      /skills
 │   │   ├── contact.astro     /contact
-│   │   ├── now.astro         /now       — 현재 상태
-│   │   ├── uses.astro        /uses      — 장비·툴
-│   │   ├── ps.astro          /ps        — 알고리즘 풀이 허브
-│   │   ├── search.astro      /search    — Pagefind UI
+│   │   ├── now.astro         /now
+│   │   ├── uses.astro        /uses
+│   │   ├── ps.astro          /ps
+│   │   ├── search.astro      /search
 │   │   ├── 404.astro
 │   │   ├── rss.xml.ts
+│   │   ├── admin/
+│   │   │   ├── login.astro
+│   │   │   ├── index.astro   # 대시보드 (포스트 리스트)
+│   │   │   └── editor.astro  # VS 같은 에디터 + AI 보조
 │   │   ├── blog/
 │   │   │   ├── index.astro
 │   │   │   ├── [...slug].astro
@@ -53,7 +69,8 @@ stdN/
 │   │       ├── index.astro
 │   │       └── [...slug].astro
 │   └── styles/
-│       └── global.css       # 토큰화된 전역 스타일
+│       └── admin.css        # 어드민 전용 스타일
+├── schema.sql               # D1 스키마 (guestbook, views, posts, sessions)
 ├── astro.config.mjs
 ├── tsconfig.json
 ├── wrangler.toml
@@ -66,7 +83,7 @@ stdN/
 
 ```bash
 # 1. Node 20 이상 설치 — https://nodejs.org
-# 2. (권장) pnpm 사용. npm/yarn 도 됩니다.
+# 2. pnpm (권장)
 npm install -g pnpm
 
 # 3. 의존성 설치
@@ -84,69 +101,129 @@ pnpm preview
 
 > Pagefind 검색 인덱스는 `pnpm build` 시점에 생성됩니다.
 > `pnpm dev` 환경에서는 `/search` 결과가 비어 보일 수 있어요.
+> Pages Functions (`/functions/`) + D1 바인딩은 `pnpm dev` 에서는 동작하지 않습니다.
+> 로컬에서 Functions 포함 테스트 하려면 `npx wrangler pages dev dist` 를 쓰세요.
 
 ---
 
 ## ☁️ Cloudflare Pages 배포
 
-### A. 수동 한 번 (권장하지 않음, 테스트용)
+### A. Git 연동 자동 배포 (추천)
 
-```bash
-pnpm build
-npx wrangler pages deploy dist --project-name=std-n
-```
-
-### B. Git 연동 자동 배포 (추천)
-
-1. 이 폴더를 GitHub repo 로 푸시 (예: `github.com/namgyumo/std-n`).
+1. 이 폴더를 GitHub repo 로 푸시 (예: `github.com/namgyumo/stdn`).
 2. https://dash.cloudflare.com → Pages → Create project → Connect to Git.
 3. 해당 repo 선택. 빌드 설정:
    - **Framework preset**: Astro
    - **Build command**: `pnpm build`
    - **Build output directory**: `dist`
    - **Node version**: 20 이상 (환경변수 `NODE_VERSION=20`)
-4. 환경변수 (Settings → Environment variables):
-
-   | Key | 예시 | 용도 |
-   |---|---|---|
-   | `PUBLIC_SITE_URL` | `https://std-n.dev` | 절대 URL (canonical/RSS/OG) |
-   | `PUBLIC_CF_ANALYTICS_TOKEN` | (Cloudflare 발급) | Web Analytics |
-   | `RESEND_API_KEY` | `re_...` | 연락 폼 전송 (선택) |
-   | `CONTACT_TO_EMAIL` | `n.gyumo13@gmail.com` | 받는 이 |
-   | `CONTACT_FROM_EMAIL` | `std::N <hello@std-n.dev>` | 보내는 이 (선택) |
-
+4. 환경변수 (Settings → Environment variables) — 아래 표 참조.
 5. 배포 완료되면 도메인 연결 (Custom domain → `std-n.dev`).
 
-### C. D1 연결 (방명록·조회수)
+### B. 환경변수
+
+Pages → Settings → Environment variables 에서 **Production / Preview 모두** 등록:
+
+| Key | 필수 | 예시 | 용도 |
+|---|---|---|---|
+| `PUBLIC_SITE_URL` | ✅ | `https://std-n.dev` | canonical / RSS / OG |
+| `PUBLIC_CF_ANALYTICS_TOKEN` | ☐ | (CF 발급) | Web Analytics |
+| `RESEND_API_KEY` | ☐ | `re_...` | 연락 폼 |
+| `CONTACT_TO_EMAIL` | ☐ | `n.gyumo13@gmail.com` | 받는 이 |
+| `CONTACT_FROM_EMAIL` | ☐ | `std::N <hello@std-n.dev>` | 보내는 이 |
+| `ADMIN_PASSWORD_HASH` | ✅ (admin) | `100000:...:...` | admin 로그인 — PBKDF2 |
+| `SESSION_SECRET` | ✅ (admin) | 32바이트 hex | 세션 쿠키 서명 (HMAC) |
+| `GEMINI_API_KEY` | ✅ (AI) | AI Studio 발급 | 에디터 AI 보조 |
+
+### C. D1 연결 (방명록·조회수·블로그 글)
+
+1. **D1 생성** — Cloudflare 대시보드 D1 탭에서 `std-n` 이름으로 만들거나:
+   ```bash
+   npx wrangler d1 create std-n
+   # 출력된 database_id 를 wrangler.toml 에 기입
+   ```
+
+2. **스키마 적용** — `schema.sql` 을 사용합니다.
+   - 로컬에서:
+     ```bash
+     npx wrangler d1 execute std-n --remote --file=schema.sql
+     ```
+   - 또는 Cloudflare 대시보드 D1 → `std-n` → Console 탭에서 `schema.sql` 내용을 그대로 붙여넣고 실행.
+
+3. **Pages 프로젝트 → Settings → Functions → D1 database bindings**
+   - Binding name: **`DB`** (소문자·대문자 정확히)
+   - Database: `std-n`
+
+---
+
+## 🔐 Admin (직접 블로그 쓰기)
+
+정적 MD 파일 대신 관리자 UI 에서 바로 글을 쓰고 싶다면:
+
+### 1. ADMIN_PASSWORD_HASH 생성
+
+로컬 터미널에서 (Node 설치되어 있어야 함):
 
 ```bash
-# 1. D1 생성
-npx wrangler d1 create std-n
-# 출력된 database_id 를 wrangler.toml 의 [[d1_databases]] 섹션에 기입 + 주석 해제
-
-# 2. 스키마 적용
-npx wrangler d1 execute std-n --command "
-  CREATE TABLE IF NOT EXISTS guestbook (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL,
-    message TEXT NOT NULL,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  );
-  CREATE TABLE IF NOT EXISTS views (
-    slug TEXT PRIMARY KEY,
-    count INTEGER NOT NULL DEFAULT 0
-  );
-"
-
-# 3. Pages 프로젝트 → Settings → Functions → D1 database bindings
-#    Binding name: DB / Database: std-n
+node -e "const c=require('crypto');const s=c.randomBytes(16).toString('hex');const it=100000;const h=c.pbkdf2Sync(process.argv[1],Buffer.from(s,'hex'),it,32,'sha256').toString('hex');console.log(\`\${it}:\${s}:\${h}\`)" 'YOUR_PASSWORD'
 ```
+
+출력된 `100000:xxxxx:yyyyy` 전체를 **`ADMIN_PASSWORD_HASH`** 환경변수에 넣기.
+비밀번호 자체는 어디에도 저장하지 않습니다 (해시만 저장).
+
+### 2. SESSION_SECRET 생성
+
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+```
+
+출력된 64자리 hex 를 `SESSION_SECRET` 환경변수에.
+바뀌면 기존 세션이 전부 무효화됩니다.
+
+### 3. 접속
+
+배포 후 `https://<your-domain>/admin/login` 접속 → 비밀번호 입력 → `/admin` 대시보드.
+
+- 세션 쿠키는 **HttpOnly · Secure · SameSite=Strict · 7일** TTL.
+- `/admin/*` 는 `robots: noindex, nofollow`.
+- 에디터 접근: `/admin/editor` (신규) 또는 `/admin/editor?id=<postId>` (수정).
+
+---
+
+## 🤖 AI 보조 (Gemini)
+
+에디터 안에서 "VS Code 인라인 보조" 스타일로 동작합니다.
+
+### 1. API 키 발급
+
+https://aistudio.google.com/apikey → Create API key → 복사 → `GEMINI_API_KEY` 환경변수.
+
+무료 티어로도 충분히 동작합니다. 기본 모델은 `gemini-2.0-flash`.
+
+### 2. 에디터 단축키
+
+| 단축키 | 동작 |
+|---|---|
+| `Ctrl+S` | 저장 |
+| `Ctrl+B` / `Ctrl+I` | 굵게 / 기울임 |
+| `Ctrl+K` | **AI 이어쓰기** — 커서 위치에 자연스러운 이어쓰기 제안 |
+| `Ctrl+Shift+R` | **AI 다듬기** — 선택한 블록을 자연스럽게 리라이트 |
+| `Ctrl+Shift+F` | **AI 수정** — 선택한 블록에서 사실/문법 오류 교정 |
+| `Tab` | AI 제안 수락 (제안 떠 있을 때) / 일반 들여쓰기 (아닐 때) |
+| `Esc` | AI 제안 거절 |
+
+- 요청은 `/api/ai/complete`, `/api/ai/rewrite`, `/api/ai/fix` 로 보내지고, 서버에서 Gemini 로 프록시됩니다. 클라이언트에는 API 키가 노출되지 않습니다.
+- 글 전체 전송 대신 **커서 앞 4000자 + 뒤 1000자** (이어쓰기) 또는 **선택 블록 + 주변 2000자** (다듬기/수정) 만 보냅니다.
 
 ---
 
 ## ✍️ 새 글 쓰기
 
-`src/content/blog/<slug>.md(x)` 파일 생성.
+두 가지 방식을 공존시킵니다:
+
+### 방식 1 — 로컬 Markdown (git 커밋으로 배포)
+
+`src/content/blog/<slug>.md(x)` 파일 생성:
 
 ```markdown
 ---
@@ -160,19 +237,28 @@ draft: false
 여기서부터 본문입니다.
 ```
 
-- `draft: true` 이면 빌드에서 제외됩니다.
-- `#ps` 태그가 붙은 글은 `/ps` 페이지에도 자동 등록됩니다.
-- 코드 블록은 Shiki (`github-dark`) 로 하이라이트, `copy` 버튼이 자동 주입됩니다.
+- `draft: true` 이면 빌드에서 제외.
+- `#ps` 태그가 붙은 글은 `/ps` 페이지에도 자동 등록.
+- 코드 블록은 Shiki (`github-dark`) 로 하이라이트, `copy` 버튼 자동 주입.
+
+### 방식 2 — Admin 에디터 (D1 에 저장, 즉시 반영)
+
+`/admin/login` → `/admin/editor` 에서 작성.
+
+- 같은 `/blog/<slug>` URL 에서 서빙됩니다.
+- D1 포스트와 MD 포스트가 **slug 충돌 시**: MD 쪽이 우선. (정적 페이지가 먼저 응답)
+- 실제로는 `functions/blog/[slug].ts` 가 먼저 실행 → D1 매치되면 D1 렌더, 아니면 정적 MD 로 fall-through.
+- 블로그 리스트 (`/blog`) 는 빌드 시점 MD 글을 서버 렌더 → 클라이언트에서 `/api/posts` 로 D1 글 머지.
 
 ### 프로젝트 추가
 
-`src/content/projects/<slug>.md` 파일 생성.
+`src/content/projects/<slug>.md` 파일 생성 (Admin UI 는 아직 프로젝트는 지원 안 함):
 
 ```markdown
 ---
 title: '프로젝트 이름'
 summary: '한 줄 요약'
-status: 'wip'       # active | wip | done | idea
+status: 'wip'
 stack: ['C++', 'CMake']
 repo: 'https://github.com/namgyumo/...'
 demo: 'https://...'
@@ -186,7 +272,7 @@ order: 90
 
 ## 🎨 디자인 토큰
 
-`src/styles/global.css` 의 `:root` 섹션에서 관리합니다:
+`public/global.css` 의 `:root` 섹션에서 관리합니다:
 
 | 토큰 | 기본값 |
 |---|---|
@@ -205,6 +291,7 @@ order: 90
 ## 🧩 주요 기능
 
 - **Content Collections** — 블로그·프로젝트 모두 타입 안전 Frontmatter
+- **D1 Admin CMS** — 관리자 로그인 + VS 스타일 에디터 + Gemini AI 보조
 - **View Transitions** — Astro `ClientRouter` 로 부드러운 페이지 전환
 - **Command Palette** — `Ctrl/Cmd + K` 또는 `/` 로 열기
 - **Cursor Glow** — 마우스 주변 라임색 radial glow
@@ -218,33 +305,19 @@ order: 90
 
 ---
 
-## 🐛 레거시 대비 수정된 것
-
-- `lang="kr"` → `lang="ko"` (표준 코드)
-- `<p><h1>…</h1></p>` 같은 잘못된 중첩 제거
-- `<table>` 레이아웃 → semantic HTML + CSS grid/flex
-- `align="center"` → CSS
-- `http://` BOJ 뱃지 → `https://`
-- `poby01.JPG` → `public/images/poby01.jpg` (확장자 소문자)
-- 페이지별 `<title>`, `meta description`, Open Graph 세팅
-- 키보드 포커스 스타일 (`:focus-visible`)
-- `prefers-reduced-motion` 대응
-- 모바일에서 프로필 슬라이드 엣지 케이스 정리
-
----
-
 ## 🛣 로드맵
 
-- [ ] `pnpm install` + `pnpm dev` 로 동작 확인
-- [ ] GitHub repo 생성 + push
-- [ ] Cloudflare Pages 연결 및 첫 배포
-- [ ] 도메인 연결 (std-n.dev 또는 원하는 도메인)
-- [ ] 실제 `poby01.jpg` 를 WebP 로 재생성 (1.9MB → ~100KB)
-- [ ] OG 기본 SVG 를 PNG 로 렌더 (카카오톡 등 일부 스크레이퍼는 SVG 미지원)
+- [x] Astro 5 정적 구조 + Cloudflare Pages 연결
+- [x] D1 기반 방명록·조회수
+- [x] Admin 로그인 + D1 포스트 CRUD
+- [x] Gemini AI 이어쓰기/다듬기/수정
+- [ ] `ADMIN_PASSWORD_HASH` / `SESSION_SECRET` / `GEMINI_API_KEY` Pages 환경변수 등록
+- [ ] D1 `schema.sql` 적용 + `DB` 바인딩
+- [ ] 도메인 연결 (std-n.dev 등)
+- [ ] `poby01.jpg` WebP 로 재생성 (1.9MB → ~100KB)
+- [ ] OG 기본 SVG 를 PNG 로 렌더
 - [ ] Giscus 리포지토리·카테고리 ID 세팅
-- [ ] D1 생성 + 방명록·조회수 활성화
-- [ ] Resend API 키 등록 + 연락 폼 활성화
-- [ ] 블로그 글 추가
+- [ ] Resend API 키 등록
 
 ---
 
