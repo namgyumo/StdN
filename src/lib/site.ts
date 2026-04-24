@@ -2,11 +2,11 @@ export const site = {
   title: 'std::N',
   shortName: 'std::N',
   description:
-    '기본이 탄탄한 주니어 개발자. 알고리즘·자료구조·저수준 언어에 관심이 많은 동의대 컴소공 개발자의 블로그와 포트폴리오.',
+    '저수준을 공부하고 직접 구현하는 걸 좋아하는 동의대 컴소공 25학번. C·C++ 중심으로 메모리·알고리즘·설계 패턴을 파고드는 남규모의 블로그와 포트폴리오.',
   url: import.meta.env.PUBLIC_SITE_URL ?? 'https://std-n.dev',
   locale: 'ko',
   author: {
-    name: 'N',
+    name: '남규모',
     handle: 'namgyumo',
     email: 'n.gyumo13@gmail.com',
     boj: 'mjc5433',
