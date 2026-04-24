@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" role="img" aria-label="std::N — A Junior Developer Grounded in Basics">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#101010" />
+      <stop offset="50%" stop-color="#080808" />
+      <stop offset="100%" stop-color="#101010" />
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0062ff" />
+      <stop offset="100%" stop-color="#ff003c" />
+    </linearGradient>
+    <pattern id="grid" x="0" y="0" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#5b6e96" stroke-width="1" opacity="0.25" />
+    </pattern>
+    <radialGradient id="vignette" cx="50%" cy="50%" r="60%">
+      <stop offset="40%" stop-color="#080808" stop-opacity="0" />
+      <stop offset="100%" stop-color="#080808" stop-opacity="1" />
+    </radialGradient>
+  </defs>
+
+  <rect width="1200" height="630" fill="url(#bg)" />
+  <rect width="1200" height="630" fill="url(#grid)" />
+  <rect width="1200" height="630" fill="url(#vignette)" />
+
+  <rect x="60" y="60" width="1080" height="510" rx="20" fill="none" stroke="url(#accent)" stroke-width="2" opacity="0.6" />
+
+  <g font-family="'JetBrains Mono', 'Cascadia Code', monospace">
+    <text x="100" y="160" font-size="30" fill="#c1ff00" letter-spacing="6">// std::N</text>
+    <text x="100" y="310" font-size="92" fill="#e0f7fa" font-weight="700">기본이 탄탄한</text>
+    <text x="100" y="410" font-size="92" fill="#e0f7fa" font-weight="700">주니어 개발자.</text>
+    <text x="100" y="490" font-size="26" fill="#909090">A Junior Developer Grounded in Basics</text>
+    <text x="100" y="540" font-size="22" fill="#c1ff00">C / C++ · Algorithm · Low-level</text>
+  </g>
+
+  <g transform="translate(950, 450)" font-family="'JetBrains Mono', monospace">
+    <circle cx="0" cy="0" r="80" fill="none" stroke="#c1ff00" stroke-width="2" opacity="0.8" />
+    <text x="0" y="8" text-anchor="middle" font-size="36" fill="#c1ff00">std::N</text>
+  </g>
+</svg>

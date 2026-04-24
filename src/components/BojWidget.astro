@@ -1,0 +1,57 @@
+---
+import { site } from '@lib/site';
+const handle = site.author.boj;
+---
+
+<div class="pro-card">
+  <h2 class="section-h1">DASHBOARD</h2>
+  <p class="boj-subtitle">BOJ STATUS</p>
+  <div class="boj-wrap">
+    <a
+      class="boj-api"
+      href={`https://solved.ac/${handle}`}
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label="solved.ac 프로필"
+    >
+      <img
+        src={`https://mazassumnida.wtf/api/v2/generate_badge?boj=${handle}`}
+        alt={`${handle} solved.ac 프로필 뱃지`}
+        loading="lazy"
+        width="350"
+        height="100"
+      />
+    </a>
+    <a
+      class="boj-api"
+      href={`https://solved.ac/profile/${handle}`}
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label="Baekjoon 풀이 현황"
+    >
+      <img
+        src={`https://mazandi.herokuapp.com/api?handle=${handle}&theme=warm`}
+        alt={`${handle} Baekjoon 풀이 현황 뱃지`}
+        loading="lazy"
+        width="350"
+        height="100"
+      />
+    </a>
+  </div>
+</div>
+
+<style>
+  .boj-subtitle {
+    font-family: var(--font-mono);
+    color: var(--color-accent);
+    letter-spacing: 3px;
+    font-size: 1rem;
+    margin: 10px 0 20px;
+  }
+  .boj-wrap {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    justify-content: center;
+  }
+</style>

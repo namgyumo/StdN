@@ -1,0 +1,18 @@
+{
+  "name": "std::N",
+  "short_name": "std::N",
+  "description": "기본이 탄탄한 주니어 개발자의 홈페이지와 블로그.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#080808",
+  "theme_color": "#080808",
+  "lang": "ko",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

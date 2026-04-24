@@ -1,0 +1,56 @@
+---
+import type { MarkdownHeading } from 'astro';
+import BaseLayout from './BaseLayout.astro';
+import ReadingProgress from '@components/ReadingProgress.astro';
+import TableOfContents from '@components/TableOfContents.astro';
+import CopyCode from '@components/CopyCode.astro';
+import { formatDate } from '@lib/format';
+
+interface Props {
+  title: string;
+  description?: string;
+  publishedAt: Date;
+  updatedAt?: Date;
+  tags?: string[];
+  readTime?: string;
+  headings: MarkdownHeading[];
+  image?: string;
+}
+
+const { title, description, publishedAt, updatedAt, tags = [], readTime, headings, image } = Astro.props;
+---
+
+<BaseLayout
+  title={title}
+  description={description}
+  type="article"
+  publishedAt={publishedAt}
+  image={image}
+>
+  <ReadingProgress />
+  <article>
+    <header class="post-header">
+      <h1>{title}</h1>
+      <div class="post-meta">
+        <time datetime={publishedAt.toISOString()}>{formatDate(publishedAt)}</time>
+        {updatedAt && <span>· 수정 {formatDate(updatedAt)}</span>}
+        {readTime && <span>· {readTime}</span>}
+      </div>
+      {tags.length > 0 && (
+        <div class="post-tags" style="margin-top: 14px;">
+          {tags.map((tag) => (
+            <a class="tag" href={`/blog/tags/${encodeURIComponent(tag)}`}>#{tag}</a>
+          ))}
+        </div>
+      )}
+    </header>
+
+    <div class="blog-layout">
+      <div class="prose">
+        <slot />
+      </div>
+      <TableOfContents headings={headings} />
+    </div>
+  </article>
+  <CopyCode />
+</BaseLayout>

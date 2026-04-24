@@ -1,0 +1,35 @@
+---
+// 모든 <pre> 에 복사 버튼 주입 + 클릭 시 라벨 갱신
+---
+
+<script>
+  function install() {
+    const blocks = document.querySelectorAll<HTMLPreElement>('.prose pre');
+    blocks.forEach((pre) => {
+      if (pre.querySelector('.copy-code-btn')) return;
+      const btn = document.createElement('button');
+      btn.className = 'copy-code-btn';
+      btn.type = 'button';
+      btn.textContent = 'copy';
+      btn.setAttribute('aria-label', '코드 복사');
+      btn.addEventListener('click', async () => {
+        const code = pre.querySelector('code')?.innerText ?? pre.innerText;
+        try {
+          await navigator.clipboard.writeText(code);
+          btn.textContent = 'copied';
+          btn.dataset.copied = 'true';
+          setTimeout(() => {
+            btn.textContent = 'copy';
+            delete btn.dataset.copied;
+          }, 1500);
+        } catch {
+          btn.textContent = 'failed';
+        }
+      });
+      pre.appendChild(btn);
+    });
+  }
+
+  install();
+  document.addEventListener('astro:after-swap', install);
+</script>

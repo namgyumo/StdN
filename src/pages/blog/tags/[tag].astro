@@ -1,0 +1,62 @@
+---
+import BaseLayout from '@layouts/BaseLayout.astro';
+import { getCollection } from 'astro:content';
+import { formatShortDate } from '@lib/format';
+
+export async function getStaticPaths() {
+  const posts = await getCollection('blog', ({ data }) => !data.draft);
+  const tags = new Set<string>();
+  for (const p of posts) for (const t of p.data.tags) tags.add(t);
+  return [...tags].map((tag) => ({
+    params: { tag },
+    props: {
+      tag,
+      posts: posts
+        .filter((p) => p.data.tags.includes(tag))
+        .sort((a, b) => b.data.publishedAt.valueOf() - a.data.publishedAt.valueOf()),
+    },
+  }));
+}
+
+interface Props {
+  tag: string;
+  posts: Awaited<ReturnType<typeof getCollection<'blog'>>>;
+}
+
+const { tag, posts } = Astro.props;
+---
+
+<BaseLayout
+  title={`#${tag}`}
+  description={`태그 "${tag}" 로 분류된 ${posts.length}개의 글.`}
+>
+  <section class="container container-narrow" style="padding-top: 60px;">
+    <header class="center" style="margin-bottom: 40px;">
+      <p class="eyebrow">// tag</p>
+      <h1 class="h1">#{tag}</h1>
+      <p style="margin-top: 10px; color: var(--color-fg-dim); font-family: var(--font-mono);">
+        {posts.length}개의 글
+      </p>
+      <p style="margin-top: 20px;">
+        <a href="/blog" class="btntext">← 전체 블로그로</a>
+      </p>
+    </header>
+    <ul class="post-list">
+      {posts.map((p) => (
+        <li>
+          <a class="post-item" href={`/blog/${p.id}`}>
+            <span class="post-date">{formatShortDate(p.data.publishedAt)}</span>
+            <div>
+              <h2 class="post-title">{p.data.title}</h2>
+              {p.data.tags.length > 0 && (
+                <div class="post-tags">
+                  {p.data.tags.map((t) => <span class="tag">#{t}</span>)}
+                </div>
+              )}
+            </div>
+          </a>
+        </li>
+      ))}
+    </ul>
+  </section>
+</BaseLayout>

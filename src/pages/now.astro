@@ -1,0 +1,143 @@
+---
+import BaseLayout from '@layouts/BaseLayout.astro';
+import { formatDate } from '@lib/format';
+
+// 이 페이지는 자주 갱신하는 "현재 상태" 스냅샷입니다.
+// https://nownownow.com/about 철학을 따릅니다.
+const lastUpdated = new Date('2026-04-24');
+
+const currently = [
+  { label: '위치', value: '부산, 대한민국 · 동의대학교' },
+  { label: '학기', value: '컴퓨터소프트웨어공학과 2학년' },
+  { label: '포커스', value: 'C/C++ 저수준 메모리·포인터·알고리즘' },
+  { label: 'BOJ', value: 'Gold-V → Gold-III 목표' },
+];
+
+const reading = [
+  '『Crafting Interpreters』 — Robert Nystrom',
+  '『모두의 자료구조』 — 이석호',
+  '『컴퓨터 구조 및 설계』 — Patterson, Hennessy',
+];
+
+const building = [
+  'std::N 개인 홈페이지 (이 사이트)',
+  'algo-visualizer 초기 설계',
+  'GDGoC-DEU 코어 멤버 활동',
+];
+
+const learning = [
+  'Cloudflare Workers / D1 내부 동작',
+  'Rust 입문 (C++ 과 비교하면서)',
+  '리눅스 시스템 프로그래밍',
+];
+---
+
+<BaseLayout
+  title="Now"
+  description="지금 무엇을 공부하고, 만들고, 읽고 있는지 — 월 단위 업데이트."
+>
+  <section class="container container-narrow" style="padding-top: 80px;">
+    <header class="center" style="margin-bottom: 40px;">
+      <p class="eyebrow">// now</p>
+      <h1 class="h1">Now</h1>
+      <p style="color: var(--color-fg-dim); font-family: var(--font-mono); margin-top: 10px;">
+        마지막 업데이트 · {formatDate(lastUpdated)}
+      </p>
+    </header>
+
+    <div class="now-grid">
+      <section>
+        <h2 class="now-h2">Currently</h2>
+        <dl>
+          {currently.map((item) => (
+            <div class="kv">
+              <dt>{item.label}</dt>
+              <dd>{item.value}</dd>
+            </div>
+          ))}
+        </dl>
+      </section>
+
+      <section>
+        <h2 class="now-h2">Building</h2>
+        <ul class="bullet">
+          {building.map((b) => <li>{b}</li>)}
+        </ul>
+      </section>
+
+      <section>
+        <h2 class="now-h2">Learning</h2>
+        <ul class="bullet">
+          {learning.map((l) => <li>{l}</li>)}
+        </ul>
+      </section>
+
+      <section>
+        <h2 class="now-h2">Reading</h2>
+        <ul class="bullet">
+          {reading.map((r) => <li>{r}</li>)}
+        </ul>
+      </section>
+    </div>
+
+    <p class="ref">
+      → 이 페이지는 <a href="https://nownownow.com/about" target="_blank" rel="noopener noreferrer">now page</a> 철학을 따릅니다.
+    </p>
+  </section>
+</BaseLayout>
+
+<style>
+  .now-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 40px;
+  }
+  @media (min-width: 720px) {
+    .now-grid { grid-template-columns: 1fr 1fr; }
+  }
+  .now-h2 {
+    color: var(--color-accent);
+    font-size: 1rem;
+    letter-spacing: 3px;
+    margin: 0 0 16px;
+    padding-bottom: 6px;
+    border-bottom: 1px dashed rgba(193, 255, 0, 0.3);
+    font-family: var(--font-mono);
+    text-transform: uppercase;
+    font-weight: 500;
+  }
+  .kv {
+    display: grid;
+    grid-template-columns: 80px 1fr;
+    gap: 14px;
+    margin-bottom: 10px;
+    font-family: var(--font-mono);
+    font-size: 0.95rem;
+  }
+  .kv dt { color: var(--color-fg-dim); }
+  .kv dd { margin: 0; color: var(--color-fg); }
+  .bullet {
+    list-style: none;
+    padding: 0;
+  }
+  .bullet li {
+    padding-left: 20px;
+    position: relative;
+    margin-bottom: 10px;
+    line-height: 1.6;
+  }
+  .bullet li::before {
+    content: '→';
+    position: absolute;
+    left: 0;
+    color: var(--color-accent);
+  }
+  .ref {
+    margin-top: 60px;
+    text-align: center;
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    color: var(--color-fg-dim);
+  }
+  .ref a { color: var(--color-accent); }
+</style>

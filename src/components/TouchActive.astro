@@ -1,0 +1,41 @@
+---
+// 기존 touch.js 의 .touch-active 클래스 토글 패턴을 재현.
+// 모든 페이지에서 호버 전용 효과를 모바일 터치로도 쓸 수 있게 함.
+---
+
+<script>
+  function install() {
+    const selectors = [
+      '.nav a',
+      '.logo',
+      '.box',
+      '.contact-box',
+      '.about-box',
+      '.info-box',
+      '.port-date',
+      '.port-inner',
+      '.skill-card',
+      '.contact-card',
+      '.boj-api',
+      '.sub-pro',
+      '.btntext',
+      '.rec-card',
+      '.post-item',
+      '.project-card',
+    ];
+    const els = document.querySelectorAll(selectors.join(','));
+
+    els.forEach((el) => {
+      if ((el as HTMLElement).dataset.touchInited) return;
+      (el as HTMLElement).dataset.touchInited = '1';
+      el.addEventListener('touchstart', () => el.classList.add('touch-active'), { passive: true });
+      el.addEventListener('touchend', () => {
+        setTimeout(() => el.classList.remove('touch-active'), 400);
+      });
+      el.addEventListener('touchcancel', () => el.classList.remove('touch-active'));
+    });
+  }
+
+  install();
+  document.addEventListener('astro:after-swap', install);
+</script>

@@ -1,0 +1,50 @@
+---
+import { getCollection, render } from 'astro:content';
+import BaseLayout from '@layouts/BaseLayout.astro';
+import CopyCode from '@components/CopyCode.astro';
+import { formatDate } from '@lib/format';
+
+export async function getStaticPaths() {
+  const projects = await getCollection('projects');
+  return projects.map((project) => ({
+    params: { slug: project.id },
+    props: { project },
+  }));
+}
+
+const { project } = Astro.props;
+const { Content } = await render(project);
+---
+
+<BaseLayout title={project.data.title} description={project.data.summary}>
+  <article>
+    <header class="post-header">
+      <p class="eyebrow">// project</p>
+      <h1>{project.data.title}</h1>
+      <p style="margin: 8px 0 0; color: var(--color-fg-dim);">{project.data.summary}</p>
+      <div class="post-meta" style="margin-top: 14px;">
+        <span>Started {formatDate(project.data.startedAt)}</span>
+        {project.data.finishedAt && <span>· Finished {formatDate(project.data.finishedAt)}</span>}
+        <span>· Status {project.data.status}</span>
+      </div>
+      <div class="post-tags" style="margin-top: 14px;">
+        {project.data.stack.map((s) => <span class="tag">{s}</span>)}
+      </div>
+      <div style="margin-top: 18px; display: flex; gap: 12px; flex-wrap: wrap;">
+        {project.data.repo && (
+          <a class="btntext" href={project.data.repo} target="_blank" rel="noopener noreferrer">→ Repo</a>
+        )}
+        {project.data.demo && (
+          <a class="btntext" href={project.data.demo} target="_blank" rel="noopener noreferrer">→ Demo</a>
+        )}
+      </div>
+    </header>
+
+    <div class="container container-narrow">
+      <div class="prose">
+        <Content />
+      </div>
+    </div>
+  </article>
+  <CopyCode />
+</BaseLayout>

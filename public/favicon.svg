@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="std::N">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0062ff" />
+      <stop offset="100%" stop-color="#ff003c" />
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="1.4" result="blur" />
+      <feMerge>
+        <feMergeNode in="blur" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+  </defs>
+  <rect width="64" height="64" rx="14" fill="#080808" />
+  <rect x="2" y="2" width="60" height="60" rx="12" fill="none" stroke="url(#g)" stroke-width="1.5" opacity="0.7" />
+  <g filter="url(#glow)" font-family="'JetBrains Mono', 'Cascadia Code', monospace" font-weight="700">
+    <text x="32" y="26" text-anchor="middle" font-size="12" fill="#c1ff00">std</text>
+    <text x="32" y="50" text-anchor="middle" font-size="26" fill="#e0f7fa">::N</text>
+  </g>
+</svg>

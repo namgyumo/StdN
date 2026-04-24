@@ -1,0 +1,160 @@
+---
+import { site } from '@lib/site';
+
+const commands = [
+  ...site.nav.map((n) => ({ type: 'nav', label: n.label, href: n.href, kbd: '' })),
+  { type: 'action', label: 'Copy email', href: `mailto:${site.author.email}`, kbd: 'e' },
+  { type: 'action', label: 'Open GitHub', href: site.author.github, kbd: 'g' },
+  { type: 'action', label: 'Open BOJ profile', href: `https://solved.ac/${site.author.boj}`, kbd: 'b' },
+  { type: 'action', label: 'RSS feed', href: '/rss.xml', kbd: 'r' },
+  { type: 'action', label: 'Search posts', href: '/search', kbd: '/' },
+];
+---
+
+<div class="cmdk-backdrop" id="cmdk-backdrop" data-open="false" role="dialog" aria-modal="true" aria-label="명령어 팔레트">
+  <div class="cmdk">
+    <input
+      id="cmdk-input"
+      class="cmdk-input"
+      type="text"
+      placeholder="명령어 또는 페이지 검색..."
+      autocomplete="off"
+      spellcheck="false"
+    />
+    <ul id="cmdk-list" class="cmdk-list" role="listbox">
+      {
+        commands.map((c, i) => (
+          <li
+            class="cmdk-item"
+            role="option"
+            data-href={c.href}
+            data-label={c.label.toLowerCase()}
+            aria-selected={i === 0 ? 'true' : 'false'}
+          >
+            <span class="cmdk-item-kind">{c.type === 'nav' ? '→' : '⚡'}</span>
+            <span class="cmdk-item-label">{c.label}</span>
+            {c.kbd && <span class="cmdk-item-kbd"><kbd>{c.kbd}</kbd></span>}
+          </li>
+        ))
+      }
+    </ul>
+    <div class="cmdk-hint">
+      <span><kbd>↑</kbd> <kbd>↓</kbd> 탐색</span>
+      <span><kbd>⏎</kbd> 열기</span>
+      <span><kbd>Esc</kbd> 닫기</span>
+    </div>
+  </div>
+</div>
+
+<script>
+  function setup() {
+    const backdrop = document.getElementById('cmdk-backdrop') as HTMLElement | null;
+    const input = document.getElementById('cmdk-input') as HTMLInputElement | null;
+    const list = document.getElementById('cmdk-list') as HTMLElement | null;
+    const trigger = document.getElementById('cmdk-open');
+    if (!backdrop || !input || !list) return;
+
+    const items = Array.from(list.querySelectorAll<HTMLLIElement>('.cmdk-item'));
+    let selected = 0;
+
+    function open() {
+      backdrop!.dataset.open = 'true';
+      input!.value = '';
+      filter('');
+      selected = 0;
+      syncSelection();
+      setTimeout(() => input!.focus(), 20);
+    }
+
+    function close() {
+      backdrop!.dataset.open = 'false';
+    }
+
+    function filter(q: string) {
+      const needle = q.trim().toLowerCase();
+      let first = -1;
+      items.forEach((el, i) => {
+        const match = !needle || (el.dataset.label ?? '').includes(needle);
+        el.style.display = match ? '' : 'none';
+        if (match && first === -1) first = i;
+      });
+      selected = first === -1 ? 0 : first;
+      syncSelection();
+    }
+
+    function syncSelection() {
+      items.forEach((el, i) => {
+        el.setAttribute('aria-selected', i === selected ? 'true' : 'false');
+        if (i === selected) el.scrollIntoView({ block: 'nearest' });
+      });
+    }
+
+    function visibleIndex(delta: number) {
+      const visible = items
+        .map((el, i) => ({ el, i }))
+        .filter(({ el }) => el.style.display !== 'none');
+      if (!visible.length) return;
+      const curPos = visible.findIndex(({ i }) => i === selected);
+      const nextPos = (curPos + delta + visible.length) % visible.length;
+      selected = visible[nextPos].i;
+      syncSelection();
+    }
+
+    function activate() {
+      const el = items[selected];
+      if (!el) return;
+      const href = el.dataset.href;
+      if (!href) return;
+      close();
+      if (href.startsWith('http') || href.startsWith('mailto:')) {
+        window.open(href, href.startsWith('mailto:') ? '_self' : '_blank');
+      } else {
+        window.location.href = href;
+      }
+    }
+
+    trigger?.addEventListener('click', open);
+
+    document.addEventListener('keydown', (e) => {
+      const open_ = backdrop!.dataset.open === 'true';
+      const isMeta = e.metaKey || e.ctrlKey;
+      if (isMeta && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        open_ ? close() : open();
+        return;
+      }
+      if (e.key === '/' && !open_ && !isInput(e.target)) {
+        e.preventDefault();
+        open();
+        return;
+      }
+      if (!open_) return;
+      if (e.key === 'Escape') { e.preventDefault(); close(); }
+      else if (e.key === 'ArrowDown') { e.preventDefault(); visibleIndex(1); }
+      else if (e.key === 'ArrowUp') { e.preventDefault(); visibleIndex(-1); }
+      else if (e.key === 'Enter') { e.preventDefault(); activate(); }
+    });
+
+    input.addEventListener('input', (e) => filter((e.target as HTMLInputElement).value));
+    backdrop.addEventListener('click', (e) => {
+      if (e.target === backdrop) close();
+    });
+
+    items.forEach((el, i) => {
+      el.addEventListener('mouseenter', () => {
+        selected = i;
+        syncSelection();
+      });
+      el.addEventListener('click', activate);
+    });
+
+    function isInput(target: EventTarget | null): boolean {
+      if (!(target instanceof HTMLElement)) return false;
+      const tag = target.tagName;
+      return tag === 'INPUT' || tag === 'TEXTAREA' || target.isContentEditable;
+    }
+  }
+
+  setup();
+  document.addEventListener('astro:after-swap', setup);
+</script>

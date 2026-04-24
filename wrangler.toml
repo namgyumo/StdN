@@ -1,0 +1,21 @@
+# Cloudflare Pages 배포용. 순수 정적 배포는 이 파일 없어도 되지만
+# 추후 Pages Functions(API), D1, R2 바인딩 추가할 때 여기에 선언.
+name = "std-n"
+compatibility_date = "2026-01-01"
+pages_build_output_dir = "dist"
+
+# 추후 D1 (조회수/방명록 등) 붙일 때 주석 해제:
+# [[d1_databases]]
+# binding = "DB"
+# database_name = "std-n"
+# database_id = "<your-d1-id>"
+
+# 추후 R2 (이미지/첨부) 붙일 때:
+# [[r2_buckets]]
+# binding = "ASSETS"
+# bucket_name = "std-n-assets"
+
+# 추후 KV (세션 등) 붙일 때:
+# [[kv_namespaces]]
+# binding = "KV"
+# id = "<kv-namespace-id>"

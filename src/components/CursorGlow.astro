@@ -1,0 +1,62 @@
+---
+// 마우스 주변에 네온 라임 radial glow를 따라다니게 함. 모바일에서는 숨김.
+---
+
+<div class="cursor-glow" id="cursor-glow" aria-hidden="true"></div>
+
+<script>
+  // astro page transition 간에도 동작하도록 global listener 한 번만 설치
+  declare global {
+    interface Window {
+      __cursorGlowInited?: boolean;
+    }
+  }
+
+  function init() {
+    if (window.__cursorGlowInited) return;
+    const el = document.getElementById('cursor-glow');
+    if (!el) return;
+
+    if (window.matchMedia('(max-width: 768px)').matches) {
+      el.remove();
+      return;
+    }
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      el.remove();
+      return;
+    }
+
+    window.__cursorGlowInited = true;
+
+    let targetX = window.innerWidth / 2;
+    let targetY = window.innerHeight / 2;
+    let curX = targetX;
+    let curY = targetY;
+    let active = false;
+
+    window.addEventListener('mousemove', (e) => {
+      targetX = e.clientX;
+      targetY = e.clientY;
+      if (!active) {
+        active = true;
+        el.classList.add('active');
+      }
+    }, { passive: true });
+
+    window.addEventListener('mouseleave', () => {
+      active = false;
+      el.classList.remove('active');
+    });
+
+    function tick() {
+      curX += (targetX - curX) * 0.12;
+      curY += (targetY - curY) * 0.12;
+      el.style.transform = `translate(calc(${curX}px - 50%), calc(${curY}px - 50%))`;
+      requestAnimationFrame(tick);
+    }
+    tick();
+  }
+
+  init();
+  document.addEventListener('astro:after-swap', init);
+</script>

@@ -1,0 +1,103 @@
+---
+import BaseLayout from '@layouts/BaseLayout.astro';
+
+const recommendedGames = [
+  { href: 'https://namu.wiki/w/문명%206', title: '문명 VI', src: '/images/civilization.jpg' },
+  { href: 'https://namu.wiki/w/명조:%20워더링%20웨이브', title: '명조: 워더링 웨이브', src: '/images/mw.jpg' },
+  { href: 'https://namu.wiki/w/붕괴%3A%20스타레일', title: '붕괴: 스타레일', src: '/images/starrail.jpg' },
+  { href: 'https://namu.wiki/w/하츠%20오브%20아이언%204', title: '하츠 오브 아이언 IV', src: '/images/iron.jpg' },
+];
+
+const recommendedMusicals = [
+  { href: 'https://namu.wiki/w/오페라의%20유령(뮤지컬)', title: '오페라의 유령', src: '/images/opera.jpg' },
+  { href: 'https://namu.wiki/w/하데스타운', title: '하데스타운', src: '/images/hadeth.jpg' },
+  { href: 'https://namu.wiki/w/디어%20에반%20핸슨', title: '디어 에반 핸슨', src: '/images/evan.jpg' },
+  { href: 'https://namu.wiki/w/위키드(뮤지컬)', title: '위키드', src: '/images/wicked.jpg' },
+];
+
+const values = [
+  { title: 'VALUES', body: '성능과 효율을 가장 중요하게 생각합니다. 불필요한 리소스 낭비가 눈에 밟히는 편이고, 사용자가 느끼는 속도 차이를 코드 수준에서 만들어내는 것에 관심이 있습니다.' },
+  { title: 'GOALS', body: '졸업 후에도 계속 공부하면서, 시스템 소프트웨어 분야에서 실력 있는 개발자로 자리잡는 게 목표입니다. 화려한 기술보다 구조를 제대로 이해하는 개발자가 되고 싶습니다.' },
+  { title: 'MOTIVE', body: 'C언어로 알고리즘 문제를 풀다가, 로직 하나 바꿨을 뿐인데 실행 시간이 눈에 띄게 달라지는 걸 보고 알고리즘과 자료구조에 빠졌습니다. 포인터로 메모리를 직접 다루는 것도 그때부터 재미있어졌고, 시스템 밑단에서 데이터가 어떻게 움직이는지 이해하는 게 아직도 즐겁습니다.' },
+  { title: 'INTERESTS', body: '알고리즘과 자료구조의 원리를 파고드는 게 재미있습니다. 특히 포인터와 메모리 구조를 이해하고 그걸 코드로 직접 구현해보는 것, 온라인 저지 문제 푸는 것을 즐겨 합니다.' },
+];
+---
+
+<BaseLayout
+  title="About"
+  description="std::N 소개 — 동의대 컴퓨터소프트웨어공학과에서 알고리즘과 저수준 시스템을 공부하는 주니어 개발자."
+>
+  <section class="about-hero">
+    <p class="typing">A Junior Developer Grounded in Basics</p>
+    <h1 class="h1">기본이 탄탄한 주니어 개발자.</h1>
+    <p class="h1" style="display:block; margin-top: 40px;">제가 누구냐고요?</p>
+
+    <div class="mouse" aria-hidden="true">
+      <div class="in-mouse"></div>
+    </div>
+    <p class="mouse-hint"><strong>scroll</strong></p>
+  </section>
+
+  <section class="container">
+    <div class="about-box">
+      <img src="/images/poby01.jpg" alt="프로필 사진" class="profile" width="150" height="150" />
+      <div class="info">
+        <div class="first-info">
+          <p class="about-title">Junior System Developer</p>
+          <p class="about-value">성능과 효율을 중시합니다</p>
+        </div>
+        <div class="second-info">
+          <p class="about-title">Dong-eui University</p>
+          <p class="about-value">컴퓨터소프트웨어공학과</p>
+        </div>
+      </div>
+    </div>
+
+    {values.map((v) => (
+      <div class="info-box">
+        <div class="info-title-box"><h2>{v.title}</h2></div>
+        <p>{v.body}</p>
+      </div>
+    ))}
+
+    <div class="info-box">
+      <div class="info-title-box"><h2>HOBBIES</h2></div>
+      <p>평소 코딩 외의 시간에는 서브컬쳐 게임을 즐기거나 음악을 즐겨 듣습니다. 뮤지컬도 가끔 보러 갑니다.</p>
+
+      <div style="margin-top: 40px;">
+        <h3 class="rec-heading">std::N의 추천 게임</h3>
+        <div class="rec-grid">
+          {recommendedGames.map((g) => (
+            <a href={g.href} target="_blank" rel="noopener noreferrer" class="rec-card" title={g.title}>
+              <img src={g.src} alt={g.title} loading="lazy" width="150" height="150" />
+            </a>
+          ))}
+        </div>
+      </div>
+
+      <div style="margin-top: 40px;">
+        <h3 class="rec-heading">std::N의 추천 뮤지컬</h3>
+        <div class="rec-grid">
+          {recommendedMusicals.map((m) => (
+            <a href={m.href} target="_blank" rel="noopener noreferrer" class="rec-card" title={m.title}>
+              <img src={m.src} alt={m.title} loading="lazy" width="150" height="150" />
+            </a>
+          ))}
+        </div>
+      </div>
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .about-hero {
+    text-align: center;
+    padding: 0 20px;
+  }
+  .rec-heading {
+    color: var(--color-fg);
+    margin-bottom: 20px;
+    font-weight: 400;
+    letter-spacing: 1px;
+  }
+</style>

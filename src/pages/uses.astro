@@ -1,0 +1,134 @@
+---
+import BaseLayout from '@layouts/BaseLayout.astro';
+
+const sections = [
+  {
+    title: 'Editor & Terminal',
+    items: [
+      ['에디터', 'Visual Studio Code — 주력 / Neovim 연습 중'],
+      ['터미널', 'Windows Terminal + PowerShell'],
+      ['컬러 테마', 'Tokyo Night / GitHub Dark'],
+      ['폰트', 'JetBrains Mono — 리가처 활성화'],
+      ['주요 플러그인', 'Clangd, CMake Tools, GitLens, Error Lens'],
+    ],
+  },
+  {
+    title: 'Languages & Tooling',
+    items: [
+      ['Primary', 'C / C++ / TypeScript'],
+      ['Studying', 'Rust, Python (자동화·데이터)'],
+      ['컴파일러', 'g++ / clang — C++20'],
+      ['빌드', 'CMake, Makefile'],
+      ['테스트', 'Catch2, BOJ testcase runner (자체 작성)'],
+    ],
+  },
+  {
+    title: 'Hardware',
+    items: [
+      ['랩탑', 'LG gram — 휴대용'],
+      ['데스크탑', '자작 / Ryzen + NVMe'],
+      ['키보드', '체리 청축 기반 기성품 (공부 중)'],
+      ['모니터', 'FHD 듀얼'],
+      ['헤드폰', '개방형 OEM'],
+    ],
+  },
+  {
+    title: 'Web & DevOps',
+    items: [
+      ['배포', 'Cloudflare Pages + Workers'],
+      ['DNS / CDN', 'Cloudflare'],
+      ['DB', 'Cloudflare D1 (SQLite at edge)'],
+      ['버전 관리', 'GitHub — Private/Public 혼용'],
+      ['CI/CD', 'GitHub Actions → Cloudflare Pages 자동 배포'],
+    ],
+  },
+  {
+    title: 'Services',
+    items: [
+      ['PS 플랫폼', 'BOJ, 코드포스, solved.ac'],
+      ['알림', 'Notion, Gmail'],
+      ['음악', 'Spotify, YouTube Music'],
+      ['영감', 'ArtStation, Namuwiki'],
+    ],
+  },
+];
+---
+
+<BaseLayout
+  title="Uses"
+  description="std::N 이 쓰는 장비·에디터·도구 모음 — 자주 업데이트하는 setup 페이지."
+>
+  <section class="container container-narrow" style="padding-top: 80px;">
+    <header class="center" style="margin-bottom: 40px;">
+      <p class="eyebrow">// uses</p>
+      <h1 class="h1">Uses</h1>
+      <p style="color: var(--color-fg-dim); font-family: var(--font-mono); margin-top: 10px;">
+        무엇으로 코드를 쓰고 있나
+      </p>
+    </header>
+
+    {sections.map((sec) => (
+      <section class="uses-section">
+        <h2>{sec.title}</h2>
+        <table class="uses-table">
+          <tbody>
+            {sec.items.map(([k, v]) => (
+              <tr>
+                <th scope="row">{k}</th>
+                <td>{v}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </section>
+    ))}
+
+    <p class="ref">
+      → <a href="https://uses.tech" target="_blank" rel="noopener noreferrer">uses.tech</a> 스타일 페이지입니다.
+    </p>
+  </section>
+</BaseLayout>
+
+<style>
+  .uses-section {
+    margin-top: 40px;
+  }
+  .uses-section h2 {
+    color: var(--color-accent);
+    font-family: var(--font-mono);
+    font-size: 1rem;
+    letter-spacing: 3px;
+    padding-bottom: 8px;
+    border-bottom: 1px dashed rgba(193, 255, 0, 0.3);
+    text-transform: uppercase;
+    font-weight: 500;
+  }
+  .uses-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: var(--font-mono);
+    font-size: 0.9rem;
+    margin-top: 14px;
+  }
+  .uses-table th {
+    text-align: left;
+    padding: 8px 14px 8px 0;
+    color: var(--color-fg-dim);
+    font-weight: 400;
+    width: 140px;
+    vertical-align: top;
+  }
+  .uses-table td {
+    padding: 8px 0;
+    color: var(--color-fg);
+    vertical-align: top;
+  }
+  .ref {
+    margin-top: 60px;
+    text-align: center;
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    color: var(--color-fg-dim);
+  }
+  .ref a { color: var(--color-accent); }
+</style>

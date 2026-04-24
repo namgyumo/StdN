@@ -1,0 +1,128 @@
+---
+import { ClientRouter } from 'astro:transitions';
+import { site } from '@lib/site';
+import Header from '@components/Header.astro';
+import Footer from '@components/Footer.astro';
+import CursorGlow from '@components/CursorGlow.astro';
+import CommandPalette from '@components/CommandPalette.astro';
+import TouchActive from '@components/TouchActive.astro';
+import '@styles/global.css';
+
+interface Props {
+  title?: string;
+  description?: string;
+  image?: string;
+  type?: 'website' | 'article';
+  publishedAt?: Date;
+  noindex?: boolean;
+}
+
+const {
+  title,
+  description = site.description,
+  image = '/og-default.svg',
+  type = 'website',
+  publishedAt,
+  noindex = false,
+} = Astro.props;
+
+const fullTitle = title ? `${title} · ${site.title}` : site.title;
+const canonical = new URL(Astro.url.pathname, site.url).toString();
+const ogImage = new URL(image, site.url).toString();
+
+const analyticsToken = import.meta.env.PUBLIC_CF_ANALYTICS_TOKEN;
+---
+
+<!doctype html>
+<html lang={site.locale}>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="theme-color" content="#080808" />
+    <meta name="generator" content={Astro.generator} />
+
+    <title>{fullTitle}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    {noindex && <meta name="robots" content="noindex, nofollow" />}
+
+    <!-- Open Graph -->
+    <meta property="og:type" content={type} />
+    <meta property="og:site_name" content={site.title} />
+    <meta property="og:title" content={fullTitle} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:image" content={ogImage} />
+    <meta property="og:locale" content="ko_KR" />
+    {publishedAt && <meta property="article:published_time" content={publishedAt.toISOString()} />}
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={fullTitle} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={ogImage} />
+
+    <!-- Feeds / icons -->
+    <link rel="alternate" type="application/rss+xml" title={`${site.title} RSS`} href="/rss.xml" />
+    <link rel="sitemap" href="/sitemap-index.xml" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="manifest" href="/site.webmanifest" />
+
+    <!-- JSON-LD -->
+    <script
+      is:inline
+      type="application/ld+json"
+      set:html={JSON.stringify({
+        '@context': 'https://schema.org',
+        '@type': 'Person',
+        name: site.author.name,
+        alternateName: site.shortName,
+        url: site.url,
+        email: `mailto:${site.author.email}`,
+        sameAs: [site.author.github, `https://solved.ac/${site.author.boj}`],
+        description: site.description,
+      })}
+    />
+
+    {analyticsToken && (
+      <script
+        is:inline
+        defer
+        src="https://static.cloudflareinsights.com/beacon.min.js"
+        data-cf-beacon={JSON.stringify({ token: analyticsToken })}
+      ></script>
+    )}
+
+    <ClientRouter />
+  </head>
+  <body>
+    <a href="#main" class="visually-hidden skip-link">본문으로 건너뛰기</a>
+    <CursorGlow />
+    <Header />
+    <main id="main">
+      <slot />
+    </main>
+    <Footer />
+    <CommandPalette />
+    <TouchActive />
+  </body>
+</html>
+
+<style>
+  .skip-link:focus {
+    position: fixed;
+    top: 8px;
+    left: 8px;
+    width: auto;
+    height: auto;
+    padding: 8px 12px;
+    clip: auto;
+    white-space: normal;
+    background: var(--color-bg);
+    color: var(--color-accent);
+    border: 1px solid var(--color-accent);
+    border-radius: 6px;
+    z-index: 1000;
+  }
+</style>

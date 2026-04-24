@@ -1,0 +1,70 @@
+---
+import { site } from '@lib/site';
+
+const { pathname } = Astro.url;
+
+function isActive(href: string): boolean {
+  if (href === '/') return pathname === '/' || pathname === '';
+  return pathname === href || pathname.startsWith(href + '/');
+}
+---
+
+<header class="top">
+  <div class="top-inner">
+    <a href="/" aria-label={`${site.shortName} 홈`} class="logo-link">
+      <div class="logo">
+        <h1>{site.shortName}</h1>
+      </div>
+    </a>
+    <nav aria-label="주요 메뉴">
+      <ul class="nav">
+        {
+          site.nav
+            .filter((n) => ['/about', '/skills', '/blog', '/projects', '/contact'].includes(n.href))
+            .map((item) => (
+              <li>
+                <a
+                  href={item.href}
+                  aria-current={isActive(item.href) ? 'page' : undefined}
+                >
+                  {item.label}
+                </a>
+              </li>
+            ))
+        }
+        <li>
+          <button
+            id="cmdk-open"
+            class="nav-cmdk"
+            aria-label="명령어 팔레트 열기"
+            title="Ctrl/Cmd + K"
+          >
+            <kbd>⌘K</kbd>
+          </button>
+        </li>
+      </ul>
+    </nav>
+  </div>
+  <hr class="line" />
+</header>
+
+<style>
+  .logo-link {
+    display: inline-block;
+    margin-left: 4px;
+  }
+  .nav-cmdk {
+    padding: 6px 10px;
+    border: 1px solid rgba(193, 255, 0, 0.25);
+    border-radius: 6px;
+    transition: all var(--dur) var(--ease);
+  }
+  .nav-cmdk:hover {
+    border-color: var(--color-accent);
+    box-shadow: 0 0 8px rgba(193, 255, 0, 0.3);
+  }
+  @media (max-width: 640px) {
+    .nav { gap: 14px; }
+    .nav-cmdk { display: none; }
+  }
+</style>

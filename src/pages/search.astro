@@ -1,0 +1,69 @@
+---
+import BaseLayout from '@layouts/BaseLayout.astro';
+---
+
+<BaseLayout
+  title="Search"
+  description="사이트 내 글 검색. Pagefind 기반 정적 인덱스."
+>
+  <section class="container container-narrow" style="padding-top: 80px;">
+    <header class="center" style="margin-bottom: 30px;">
+      <p class="eyebrow">// search</p>
+      <h1 class="h1">Search</h1>
+      <p style="color: var(--color-fg-dim); font-family: var(--font-mono); margin-top: 10px;">
+        글 · 프로젝트 · 페이지 전체 검색
+      </p>
+    </header>
+
+    <div id="search" class="search-shell"></div>
+
+    <p class="hint">
+      빌드 이후에만 인덱스가 생성됩니다. 로컬 dev 에서는 비어 보일 수 있어요.
+      <br />
+      빠른 이동은 <kbd>Ctrl/Cmd</kbd> + <kbd>K</kbd> 팔레트를 이용하세요.
+    </p>
+  </section>
+</BaseLayout>
+
+<link href="/pagefind/pagefind-ui.css" rel="stylesheet" />
+<script src="/pagefind/pagefind-ui.js" is:inline></script>
+
+<script is:inline>
+  window.addEventListener('DOMContentLoaded', () => {
+    if (typeof PagefindUI !== 'undefined') {
+      new PagefindUI({
+        element: '#search',
+        showSubResults: true,
+        resetStyles: false,
+        translations: {
+          placeholder: '검색어를 입력하세요...',
+          clear_search: '지우기',
+          load_more: '더 보기',
+          zero_results: '"[SEARCH_TERM]"에 대한 결과가 없습니다.',
+          many_results: '"[SEARCH_TERM]"에 대한 결과 [COUNT]건',
+          one_result: '"[SEARCH_TERM]"에 대한 결과 1건',
+        },
+      });
+    }
+  });
+</script>
+
+<style>
+  .search-shell {
+    --pagefind-ui-primary: var(--color-accent);
+    --pagefind-ui-text: var(--color-fg);
+    --pagefind-ui-background: rgba(8, 8, 8, 0.85);
+    --pagefind-ui-border: rgba(193, 255, 0, 0.3);
+    --pagefind-ui-tag: rgba(193, 255, 0, 0.15);
+    --pagefind-ui-border-radius: 8px;
+    --pagefind-ui-font: var(--font-mono);
+  }
+  .hint {
+    margin-top: 40px;
+    text-align: center;
+    color: var(--color-fg-dim);
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    line-height: 1.8;
+  }
+</style>

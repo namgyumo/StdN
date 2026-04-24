@@ -1,0 +1,160 @@
+---
+import BaseLayout from '@layouts/BaseLayout.astro';
+import { site } from '@lib/site';
+
+const cards = [
+  {
+    icon: '[ GITHUB ]',
+    label: 'Repositories & Commits',
+    detail: 'github.com/namgyumo',
+    href: site.author.github,
+    external: true,
+  },
+  {
+    icon: '[ GMAIL ]',
+    label: 'Email & Business',
+    detail: site.author.email,
+    href: `mailto:${site.author.email}`,
+    external: false,
+  },
+  {
+    icon: '[ INSTAGRAM ]',
+    label: 'Direct Message',
+    detail: '@east_scale',
+    href: site.author.instagram,
+    external: true,
+  },
+  {
+    icon: '[ BOJ ]',
+    label: 'Algorithm Profile',
+    detail: `solved.ac/${site.author.boj}`,
+    href: `https://solved.ac/${site.author.boj}`,
+    external: true,
+  },
+];
+---
+
+<BaseLayout
+  title="Contact"
+  description="std::N 과 연락하는 방법 — GitHub, Email, Instagram, BOJ."
+>
+  <section class="contact-hero">
+    <h1 class="h1">CONTACT</h1>
+    <p class="h2">새로운 네트워킹과 기회를 환영합니다.</p>
+  </section>
+
+  <section class="container">
+    <div class="contact-section">
+      <div class="section-header">
+        <h2 class="section-title">CONTACT_NETWORK</h2>
+        <p class="terminal-text">Welcome to new networking and opportunities</p>
+      </div>
+
+      <div class="contact-grid">
+        {cards.map((c) => (
+          <a
+            href={c.href}
+            class="contact-card"
+            target={c.external ? '_blank' : undefined}
+            rel={c.external ? 'noopener noreferrer' : undefined}
+          >
+            <div class="contact-icon">{c.icon}</div>
+            <div class="contact-label">{c.label}</div>
+            <div class="contact-detail">{c.detail}</div>
+          </a>
+        ))}
+      </div>
+
+      <form class="contact-form" name="contact" method="POST" action="/api/contact" novalidate>
+        <h3 class="form-title">// send_message</h3>
+        <label>
+          <span>Your name</span>
+          <input type="text" name="name" required autocomplete="name" />
+        </label>
+        <label>
+          <span>Email</span>
+          <input type="email" name="email" required autocomplete="email" />
+        </label>
+        <label>
+          <span>Message</span>
+          <textarea name="message" rows="5" required></textarea>
+        </label>
+        <button type="submit" class="form-submit">TRANSMIT →</button>
+        <p class="form-note">
+          * 배포 직후에는 메일 전송이 아직 연결되지 않았습니다.
+          `RESEND_API_KEY` 환경변수와 `functions/api/contact.ts` 활성화 시 동작합니다.
+        </p>
+      </form>
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .contact-hero {
+    text-align: center;
+    padding: 40px 20px 60px;
+  }
+  .contact-hero .h1 { display: inline-block; }
+  .contact-form {
+    margin-top: 80px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    max-width: 640px;
+    margin-inline: auto;
+  }
+  .form-title {
+    font-family: var(--font-mono);
+    color: var(--color-accent);
+    letter-spacing: 2px;
+    margin: 0 0 10px;
+  }
+  .contact-form label {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    color: var(--color-fg-dim);
+  }
+  .contact-form input,
+  .contact-form textarea {
+    padding: 10px 14px;
+    background: rgba(8, 8, 8, 0.8);
+    border: 1px solid rgba(193, 255, 0, 0.25);
+    border-radius: 6px;
+    color: var(--color-fg);
+    font-family: var(--font-mono);
+    font-size: 0.95rem;
+    outline: none;
+    transition: all var(--dur) var(--ease);
+    resize: vertical;
+  }
+  .contact-form input:focus,
+  .contact-form textarea:focus {
+    border-color: var(--color-accent);
+    box-shadow: 0 0 8px rgba(193, 255, 0, 0.3);
+  }
+  .form-submit {
+    margin-top: 8px;
+    padding: 12px 20px;
+    background: transparent;
+    border: 1px solid var(--color-accent);
+    color: var(--color-accent);
+    border-radius: 6px;
+    font-family: var(--font-mono);
+    letter-spacing: 3px;
+    cursor: pointer;
+    transition: all var(--dur) var(--ease);
+  }
+  .form-submit:hover {
+    background: rgba(193, 255, 0, 0.1);
+    box-shadow: var(--glow-lime);
+  }
+  .form-note {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--color-fg-dim);
+    margin: 6px 0 0;
+  }
+</style>
