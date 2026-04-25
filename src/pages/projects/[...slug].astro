@@ -6,45 +6,289 @@ import { formatDate } from '@lib/format';
 
 export async function getStaticPaths() {
   const projects = await getCollection('projects');
-  return projects.map((project) => ({
+  // featured 우선 → order DESC → startedAt DESC 로 안정 정렬
+  const sorted = [...projects].sort((a, b) => {
+    if (a.data.featured !== b.data.featured) return a.data.featured ? -1 : 1;
+    if (a.data.order !== b.data.order) return (b.data.order ?? 0) - (a.data.order ?? 0);
+    return b.data.startedAt.valueOf() - a.data.startedAt.valueOf();
+  });
+  return sorted.map((project, i) => ({
     params: { slug: project.id },
-    props: { project },
+    props: {
+      project,
+      prev: sorted[i - 1] ?? null,
+      next: sorted[i + 1] ?? null,
+    },
   }));
 }
 
-const { project } = Astro.props;
+const { project, prev, next } = Astro.props;
 const { Content } = await render(project);
+
+const statusLabel: Record<string, string> = {
+  active: 'ACTIVE',
+  wip: 'WIP',
+  done: 'DONE',
+  idea: 'IDEA',
+};
+
+const period = project.data.finishedAt
+  ? `${formatDate(project.data.startedAt)} — ${formatDate(project.data.finishedAt)}`
+  : `${formatDate(project.data.startedAt)} — 진행 중`;
 ---
 
-<BaseLayout title={project.data.title} description={project.data.summary}>
-  <article>
-    <header class="post-header">
-      <p class="eyebrow">// project</p>
-      <h1>{project.data.title}</h1>
-      <p style="margin: 8px 0 0; color: var(--color-fg-dim);">{project.data.summary}</p>
-      <div class="post-meta" style="margin-top: 14px;">
-        <span>Started {formatDate(project.data.startedAt)}</span>
-        {project.data.finishedAt && <span>· Finished {formatDate(project.data.finishedAt)}</span>}
-        <span>· Status {project.data.status}</span>
-      </div>
-      <div class="post-tags" style="margin-top: 14px;">
-        {project.data.stack.map((s) => <span class="tag">{s}</span>)}
-      </div>
-      <div style="margin-top: 18px; display: flex; gap: 12px; flex-wrap: wrap;">
-        {project.data.repo && (
-          <a class="btntext" href={project.data.repo} target="_blank" rel="noopener noreferrer">→ Repo</a>
+<BaseLayout
+  title={project.data.title}
+  description={project.data.summary}
+  type="article"
+  publishedAt={project.data.startedAt}
+  image={project.data.image}
+>
+  <article class="project-detail">
+    <header class="project-hero">
+      <div class="container container-narrow">
+        <p class="eyebrow">// project</p>
+        <div class="hero-row">
+          <span class={`status-pill status-${project.data.status}`}>{statusLabel[project.data.status]}</span>
+          <span class="period">{period}</span>
+        </div>
+        <h1>{project.data.title}</h1>
+        <p class="summary">{project.data.summary}</p>
+
+        {project.data.stack.length > 0 && (
+          <div class="stack-row">
+            {project.data.stack.map((s) => <span class="stack-chip">{s}</span>)}
+          </div>
         )}
-        {project.data.demo && (
-          <a class="btntext" href={project.data.demo} target="_blank" rel="noopener noreferrer">→ Demo</a>
+
+        {(project.data.repo || project.data.demo) && (
+          <div class="action-row">
+            {project.data.repo && (
+              <a class="action-btn" href={project.data.repo} target="_blank" rel="noopener noreferrer">
+                <span class="action-icon">[ ]</span>
+                <span>Code</span>
+                <span class="action-arrow">→</span>
+              </a>
+            )}
+            {project.data.demo && (
+              <a class="action-btn" href={project.data.demo} target="_blank" rel="noopener noreferrer">
+                <span class="action-icon">▶</span>
+                <span>Demo</span>
+                <span class="action-arrow">→</span>
+              </a>
+            )}
+          </div>
+        )}
+
+        {project.data.image && (
+          <figure class="hero-figure">
+            <img src={project.data.image} alt={project.data.title} loading="eager" />
+          </figure>
         )}
       </div>
     </header>
 
-    <div class="container container-narrow">
+    <div class="container container-narrow project-body">
       <div class="prose">
         <Content />
       </div>
     </div>
+
+    <nav class="project-nav container container-narrow" aria-label="프로젝트 네비게이션">
+      {prev ? (
+        <a class="nav-link nav-prev" href={`/projects/${prev.id}`}>
+          <span class="nav-dir">← prev</span>
+          <span class="nav-title">{prev.data.title}</span>
+        </a>
+      ) : <span></span>}
+      {next ? (
+        <a class="nav-link nav-next" href={`/projects/${next.id}`}>
+          <span class="nav-dir">next →</span>
+          <span class="nav-title">{next.data.title}</span>
+        </a>
+      ) : <span></span>}
+    </nav>
+
+    <p class="back-all">
+      <a href="/projects" class="btntext">← 모든 프로젝트</a>
+    </p>
   </article>
   <CopyCode />
 </BaseLayout>
+
+<style>
+  .project-detail {
+    padding-top: 40px;
+  }
+  .project-hero {
+    padding: 0 0 40px;
+    border-bottom: 1px dashed rgba(193, 255, 0, 0.2);
+    margin-bottom: 40px;
+  }
+  .project-hero h1 {
+    margin: 14px 0 12px;
+    font-size: clamp(1.8rem, 4vw, 2.6rem);
+    line-height: 1.2;
+  }
+  .summary {
+    color: var(--color-fg-dim);
+    font-size: 1.05rem;
+    line-height: 1.6;
+    margin: 0 0 24px;
+    max-width: 60ch;
+  }
+  .hero-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: wrap;
+    margin-top: 10px;
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+  }
+  .period {
+    color: var(--color-fg-dim);
+  }
+  .status-pill {
+    display: inline-block;
+    padding: 3px 10px;
+    border: 1px solid rgba(193, 255, 0, 0.4);
+    border-radius: 999px;
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    letter-spacing: 2px;
+    color: var(--color-accent);
+    background: rgba(193, 255, 0, 0.05);
+  }
+  .status-pill.status-done {
+    border-color: rgba(160, 160, 160, 0.4);
+    color: #a0a0a0;
+    background: rgba(160, 160, 160, 0.05);
+  }
+  .status-pill.status-idea {
+    border-color: rgba(180, 140, 255, 0.4);
+    color: #b48cff;
+    background: rgba(180, 140, 255, 0.05);
+  }
+  .stack-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 0 0 24px;
+  }
+  .stack-chip {
+    padding: 3px 10px;
+    background: rgba(224, 247, 250, 0.04);
+    border: 1px solid rgba(224, 247, 250, 0.1);
+    border-radius: 4px;
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--color-fg-dim);
+  }
+  .action-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 4px;
+  }
+  .action-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 18px;
+    border: 1px solid var(--color-accent);
+    border-radius: 6px;
+    background: transparent;
+    color: var(--color-accent);
+    font-family: var(--font-mono);
+    font-size: 0.9rem;
+    letter-spacing: 1px;
+    text-decoration: none;
+    transition: all var(--dur) var(--ease);
+  }
+  .action-btn:hover,
+  .action-btn.touch-active {
+    background: rgba(193, 255, 0, 0.08);
+    box-shadow: var(--glow-lime);
+    transform: translateY(-1px);
+  }
+  .action-icon {
+    opacity: 0.7;
+  }
+  .action-arrow {
+    transition: transform var(--dur) var(--ease);
+  }
+  .action-btn:hover .action-arrow {
+    transform: translateX(4px);
+  }
+  .hero-figure {
+    margin: 32px 0 0;
+    padding: 0;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid rgba(193, 255, 0, 0.15);
+  }
+  .hero-figure img {
+    width: 100%;
+    height: auto;
+    display: block;
+  }
+  .project-body {
+    padding-bottom: 40px;
+  }
+  .project-nav {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-top: 60px;
+    padding-top: 30px;
+    border-top: 1px dashed rgba(193, 255, 0, 0.2);
+  }
+  .nav-link {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 16px 18px;
+    border: 1px solid rgba(193, 255, 0, 0.2);
+    border-radius: 6px;
+    text-decoration: none;
+    transition: all var(--dur) var(--ease);
+    min-width: 0;
+  }
+  .nav-link:hover,
+  .nav-link.touch-active {
+    border-color: var(--color-accent);
+    background: rgba(193, 255, 0, 0.04);
+  }
+  .nav-next {
+    text-align: right;
+    align-items: flex-end;
+  }
+  .nav-dir {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--color-accent);
+    letter-spacing: 2px;
+  }
+  .nav-title {
+    color: var(--color-fg);
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    width: 100%;
+  }
+  .back-all {
+    text-align: center;
+    margin-top: 40px;
+  }
+  @media (max-width: 600px) {
+    .project-nav {
+      grid-template-columns: 1fr;
+    }
+    .nav-next {
+      text-align: left;
+      align-items: flex-start;
+    }
+  }
+</style>

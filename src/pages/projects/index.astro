@@ -3,7 +3,9 @@ import BaseLayout from '@layouts/BaseLayout.astro';
 import { getCollection } from 'astro:content';
 
 const projects = (await getCollection('projects')).sort(
-  (a, b) => (b.data.order ?? 0) - (a.data.order ?? 0) || b.data.startedAt.valueOf() - a.data.startedAt.valueOf(),
+  (a, b) =>
+    (b.data.order ?? 0) - (a.data.order ?? 0) ||
+    b.data.startedAt.valueOf() - a.data.startedAt.valueOf(),
 );
 
 const featured = projects.filter((p) => p.data.featured);
@@ -14,6 +16,13 @@ const statusLabel: Record<string, string> = {
   wip: 'WIP',
   done: 'DONE',
   idea: 'IDEA',
+};
+
+const yearRange = (start: Date, end?: Date) => {
+  const s = start.getFullYear();
+  if (!end) return `${s} —`;
+  const e = end.getFullYear();
+  return s === e ? `${s}` : `${s}–${e}`;
 };
 ---
 
@@ -35,17 +44,16 @@ const statusLabel: Record<string, string> = {
         <h2 class="section-h1" style="margin-top: 40px;">Featured</h2>
         <div class="project-grid">
           {featured.map((p) => (
-            <a class="project-card" href={`/projects/${p.id}`}>
-              <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom: 6px;">
-                <span class="tag">{statusLabel[p.data.status]}</span>
-                <span style="font-family: var(--font-mono); font-size: .75rem; color: var(--color-fg-dim);">
-                  {p.data.startedAt.getFullYear()}
-                </span>
+            <a class="project-card" href={`/projects/${p.id}`} aria-label={`${p.data.title} 자세히 보기`}>
+              <div class="card-top">
+                <span class={`status-pill status-${p.data.status}`}>{statusLabel[p.data.status]}</span>
+                <span class="card-year">{yearRange(p.data.startedAt, p.data.finishedAt)}</span>
               </div>
               <h3>{p.data.title}</h3>
               <p>{p.data.summary}</p>
               <div class="project-stack">
-                {p.data.stack.map((s) => <span>{s}</span>)}
+                {p.data.stack.slice(0, 5).map((s) => <span>{s}</span>)}
+                {p.data.stack.length > 5 && <span>+{p.data.stack.length - 5}</span>}
               </div>
             </a>
           ))}
@@ -58,17 +66,16 @@ const statusLabel: Record<string, string> = {
         <h2 class="section-h1" style="margin-top: 60px;">Other</h2>
         <div class="project-grid">
           {others.map((p) => (
-            <a class="project-card" href={`/projects/${p.id}`}>
-              <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom: 6px;">
-                <span class="tag">{statusLabel[p.data.status]}</span>
-                <span style="font-family: var(--font-mono); font-size: .75rem; color: var(--color-fg-dim);">
-                  {p.data.startedAt.getFullYear()}
-                </span>
+            <a class="project-card" href={`/projects/${p.id}`} aria-label={`${p.data.title} 자세히 보기`}>
+              <div class="card-top">
+                <span class={`status-pill status-${p.data.status}`}>{statusLabel[p.data.status]}</span>
+                <span class="card-year">{yearRange(p.data.startedAt, p.data.finishedAt)}</span>
               </div>
               <h3>{p.data.title}</h3>
               <p>{p.data.summary}</p>
               <div class="project-stack">
-                {p.data.stack.map((s) => <span>{s}</span>)}
+                {p.data.stack.slice(0, 5).map((s) => <span>{s}</span>)}
+                {p.data.stack.length > 5 && <span>+{p.data.stack.length - 5}</span>}
               </div>
             </a>
           ))}
@@ -83,3 +90,39 @@ const statusLabel: Record<string, string> = {
     )}
   </section>
 </BaseLayout>
+
+<style>
+  .card-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+  .card-year {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--color-fg-dim);
+  }
+  .status-pill {
+    display: inline-block;
+    padding: 2px 9px;
+    border: 1px solid rgba(193, 255, 0, 0.4);
+    border-radius: 999px;
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    letter-spacing: 2px;
+    color: var(--color-accent);
+    background: rgba(193, 255, 0, 0.05);
+  }
+  .status-pill.status-done {
+    border-color: rgba(160, 160, 160, 0.4);
+    color: #a0a0a0;
+    background: rgba(160, 160, 160, 0.05);
+  }
+  .status-pill.status-idea {
+    border-color: rgba(180, 140, 255, 0.4);
+    color: #b48cff;
+    background: rgba(180, 140, 255, 0.05);
+  }
+</style>
