@@ -81,6 +81,10 @@ body {
   position: relative;
   overflow-x: hidden;
   line-height: 1.5;
+  padding-top: 72px; /* 고정 네비바 높이 보정 */
+}
+@media (max-width: 600px) {
+  body { padding-top: 60px; }
 }
 
 img,
