@@ -993,6 +993,8 @@ body::after {
 /* ─ cursor glow (mouse follower) ──────────────────────────────── */
 .cursor-glow {
   position: fixed;
+  top: 0;
+  left: 0;
   pointer-events: none;
   width: 520px;
   height: 520px;
@@ -1002,11 +1004,12 @@ body::after {
     rgba(193, 255, 0, 0.08) 0%,
     transparent 60%
   );
-  transform: translate(-50%, -50%);
+  transform: translate3d(-9999px, -9999px, 0);
   z-index: 1;
   mix-blend-mode: screen;
   transition: opacity 0.4s var(--ease);
   opacity: 0;
+  will-change: transform;
 }
 
 .cursor-glow.active {

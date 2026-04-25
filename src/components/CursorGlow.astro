@@ -28,41 +28,34 @@
 
     window.__cursorGlowInited = true;
 
-    let targetX = window.innerWidth / 2;
-    let targetY = window.innerHeight / 2;
-    let curX = targetX;
-    let curY = targetY;
+    let mouseX = 0;
+    let mouseY = 0;
+    let pending = false;
     let active = false;
-    let dirty = false;
-    let rafId = 0;
+
+    function paint() {
+      pending = false;
+      // -260 = -width/2 (520/2) → 원 중심을 마우스에 정확히 맞춤
+      el.style.transform = `translate3d(${mouseX - 260}px, ${mouseY - 260}px, 0)`;
+    }
 
     window.addEventListener('mousemove', (e) => {
-      targetX = e.clientX;
-      targetY = e.clientY;
-      dirty = true;
+      mouseX = e.clientX;
+      mouseY = e.clientY;
       if (!active) {
         active = true;
         el.classList.add('active');
       }
-      if (!rafId) rafId = requestAnimationFrame(tick);
+      if (!pending) {
+        pending = true;
+        requestAnimationFrame(paint);
+      }
     }, { passive: true });
 
     window.addEventListener('mouseleave', () => {
       active = false;
       el.classList.remove('active');
     });
-
-    function tick() {
-      rafId = 0;
-      curX += (targetX - curX) * 0.15;
-      curY += (targetY - curY) * 0.15;
-      el.style.transform = `translate3d(${curX}px, ${curY}px, 0) translate(-50%, -50%)`;
-      if (Math.abs(targetX - curX) > 0.5 || Math.abs(targetY - curY) > 0.5) {
-        rafId = requestAnimationFrame(tick);
-      } else {
-        dirty = false;
-      }
-    }
   }
 
   init();
