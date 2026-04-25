@@ -6,6 +6,7 @@ import { formatShortDate } from '@lib/format';
 const posts = (await getCollection('blog', ({ data }) => !data.draft))
   .sort((a, b) => b.data.publishedAt.valueOf() - a.data.publishedAt.valueOf())
   .slice(0, 4);
+const staticSlugs = posts.map((p) => p.id);
 ---
 
 <BaseLayout
@@ -38,31 +39,78 @@ const posts = (await getCollection('blog', ({ data }) => !data.draft))
     </div>
   </section>
 
-  {posts.length > 0 && (
-    <section class="home-posts container container-narrow">
-      <h2 class="section-h1">Recent Posts</h2>
-      <ul class="post-list">
-        {posts.map((p) => (
-          <li>
-            <a class="post-item" href={`/blog/${p.id}`}>
-              <span class="post-date">{formatShortDate(p.data.publishedAt)}</span>
+  <section class="home-posts container container-narrow" id="home-posts" style={posts.length === 0 ? 'display:none' : ''}>
+    <h2 class="section-h1">Recent Posts</h2>
+    <ul class="post-list" id="home-post-list" data-published={posts.map((p) => p.data.publishedAt.toISOString()).join(',')}>
+      {posts.map((p) => (
+        <li data-slug={p.id} data-published={p.data.publishedAt.toISOString()}>
+          <a class="post-item" href={`/blog/${p.id}`}>
+            <span class="post-date">{formatShortDate(p.data.publishedAt)}</span>
+            <div>
+              <h3 class="post-title">{p.data.title}</h3>
+              {p.data.tags && p.data.tags.length > 0 && (
+                <div class="post-tags">
+                  {p.data.tags.slice(0, 3).map((t: string) => <span class="tag">#{t}</span>)}
+                </div>
+              )}
+            </div>
+          </a>
+        </li>
+      ))}
+    </ul>
+    <p style="text-align:center; margin-top: 24px;">
+      <a href="/blog" class="btntext">→ 모든 글 보기</a>
+    </p>
+  </section>
+
+  <script is:inline define:vars={{ staticSlugs }}>
+    (async () => {
+      try {
+        const r = await fetch('/api/posts', { credentials: 'same-origin' });
+        if (!r.ok) return;
+        const data = await r.json();
+        if (!data?.ok || !Array.isArray(data.posts)) return;
+
+        const staticSet = new Set(staticSlugs);
+        const d1New = data.posts.filter((p) => !staticSet.has(p.slug));
+        if (d1New.length === 0) return;
+
+        const list = document.getElementById('home-post-list');
+        const section = document.getElementById('home-posts');
+        if (!list) return;
+
+        const fmt = (iso) => {
+          const d = new Date(iso);
+          return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`;
+        };
+        const esc = (s) => s.replace(/[&<>"']/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+
+        for (const p of d1New) {
+          const li = document.createElement('li');
+          li.dataset.slug = p.slug;
+          li.dataset.published = p.publishedAt;
+          li.innerHTML = `
+            <a class="post-item" href="/blog/${encodeURIComponent(p.slug)}">
+              <span class="post-date">${fmt(p.publishedAt)}</span>
               <div>
-                <h3 class="post-title">{p.data.title}</h3>
-                {p.data.tags && p.data.tags.length > 0 && (
-                  <div class="post-tags">
-                    {p.data.tags.slice(0, 3).map((t: string) => <span class="tag">#{t}</span>)}
-                  </div>
-                )}
+                <h3 class="post-title">${esc(p.title)}</h3>
+                ${(p.tags && p.tags.length) ? `<div class="post-tags">${p.tags.slice(0,3).map((t) => `<span class="tag">#${esc(t)}</span>`).join('')}</div>` : ''}
               </div>
             </a>
-          </li>
-        ))}
-      </ul>
-      <p style="text-align:center; margin-top: 24px;">
-        <a href="/blog" class="btntext">→ 모든 글 보기</a>
-      </p>
-    </section>
-  )}
+          `;
+          list.appendChild(li);
+        }
+
+        // 최신 4개만 노출 (날짜 내림차순)
+        const items = [...list.querySelectorAll('li')];
+        items.sort((a, b) => (b.dataset.published ?? '').localeCompare(a.dataset.published ?? ''));
+        list.innerHTML = '';
+        items.slice(0, 4).forEach((el) => list.appendChild(el));
+
+        if (section) section.style.display = '';
+      } catch {}
+    })();
+  </script>
 </BaseLayout>
 
 <style>

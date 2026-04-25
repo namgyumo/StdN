@@ -80,10 +80,6 @@ const cards = [
           <textarea name="message" rows="5" required></textarea>
         </label>
         <button type="submit" class="form-submit">TRANSMIT →</button>
-        <p class="form-note">
-          * 배포 직후에는 메일 전송이 아직 연결되지 않았습니다.
-          `RESEND_API_KEY` 환경변수와 `functions/api/contact.ts` 활성화 시 동작합니다.
-        </p>
       </form>
     </div>
   </section>
@@ -150,11 +146,5 @@ const cards = [
   .form-submit:hover {
     background: rgba(193, 255, 0, 0.1);
     box-shadow: var(--glow-lime);
-  }
-  .form-note {
-    font-family: var(--font-mono);
-    font-size: 0.75rem;
-    color: var(--color-fg-dim);
-    margin: 6px 0 0;
   }
 </style>
